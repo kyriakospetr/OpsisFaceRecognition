@@ -1,0 +1,28 @@
+@startuml
+title Settings: Delete one face or erase all data (on-device)
+
+actor User
+participant "Home\nScreen" as Home
+participant "Settings\nScreen" as Settings
+participant "Room\nDB" as DB
+
+User -> Home : Open Application
+Home -> Settings : Open settings
+
+Settings -> DB : Load registered faces
+DB --> Settings : Face list
+
+alt Delete single face
+Settings -> DB : Delete face template (Face i)
+DB --> Settings : Deleted
+Settings --> User : Update list / show confirmation
+else Erase all data
+Settings -> DB : Delete all face templates
+DB --> Settings : Deleted
+Settings --> User : Show "All data erased" / empty list
+end
+
+User -> Settings : Close (X)
+Settings -> Home : Return to home
+
+@enduml
