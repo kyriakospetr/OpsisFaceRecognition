@@ -84,7 +84,6 @@ private val darkScheme = darkColorScheme(
     surfaceContainerHigh = surfaceContainerHighDark,
     surfaceContainerHighest = surfaceContainerHighestDark,
 )
-
 @Composable
 fun OpsisFaceRecognitionTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
