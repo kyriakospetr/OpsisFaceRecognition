@@ -7,6 +7,7 @@ import androidx.compose.ui.text.font.FontWeight
 import com.example.opsisfacerecognition.R
 
 val displayFontFamily = FontFamily(
+    Font(R.font.montserrat_bold, FontWeight.Bold),
     Font(R.font.montserrat_semibold, FontWeight.SemiBold),
     Font(R.font.montserrat_medium, FontWeight.Medium)
 )
