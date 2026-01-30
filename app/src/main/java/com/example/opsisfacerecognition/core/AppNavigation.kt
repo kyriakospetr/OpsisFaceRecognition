@@ -5,6 +5,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.opsisfacerecognition.views.HomeScreen
+import com.example.opsisfacerecognition.views.ScanFaceScreen
 import com.example.opsisfacerecognition.views.ScanPrepareScreen
 import com.example.opsisfacerecognition.views.VerifyIdentityPrepScreen
 
@@ -20,10 +21,13 @@ fun AppNavigation() {
             HomeScreen(navController = navController)
         }
 
-        composable("scan_prep") {
+        composable("face_scan_prep") {
             ScanPrepareScreen(navController = navController)
         }
-        composable("verify_prep") {
+        composable("face_scan") {
+            ScanFaceScreen(navController = navController)
+        }
+        composable("face_verify_prep") {
             VerifyIdentityPrepScreen(navController = navController)
         }
     }
