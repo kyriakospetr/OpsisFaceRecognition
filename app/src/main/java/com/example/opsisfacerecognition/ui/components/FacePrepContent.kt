@@ -38,20 +38,19 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
 import com.example.opsisfacerecognition.ui.theme.bodyFontFamily
 import com.example.opsisfacerecognition.ui.theme.displayFontFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FacePrepContent(
-    navController: NavController,
     title: String,
     subtitle: String,
     @DrawableRes illustrationRes: Int,
     buttonText: String,
     tip: String,
     onPrimaryClick: () -> Unit,
+    onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -59,7 +58,7 @@ fun FacePrepContent(
             TopAppBar(
                 title = { },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick =  onBack ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = "Back",
