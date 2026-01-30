@@ -2,9 +2,7 @@ package com.example.opsisfacerecognition.views
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,17 +10,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +35,8 @@ import com.example.opsisfacerecognition.R
 import com.example.opsisfacerecognition.ui.theme.bodyFontFamily
 import com.example.opsisfacerecognition.ui.theme.displayFontFamily
 
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     navController: NavController,
@@ -44,41 +45,32 @@ fun HomeScreen(
     Scaffold(
         modifier = Modifier.fillMaxWidth(),
         topBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 24.dp, vertical = 20.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                )
-                {
-                    // Title
+            TopAppBar(
+                title = {
                     Text(
                         text = "Opsis Face Recognition",
                         fontFamily = displayFontFamily,
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onBackground
                     )
-
-                    // Settings Icon
-                    Surface(
-                        modifier = Modifier.size(38.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.background,
-                        onClick = { TODO("NAVIGATE TO SETTINGS SCREEN") }
+                },
+                actions = {
+                    IconButton(
+                        onClick = { navController.navigate("settings") }
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.settings),
                             contentDescription = "Settings",
-                            modifier = Modifier.padding(2.dp)
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
-                }
-            }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                ),
+                modifier = Modifier.padding(horizontal = 5.dp)
+            )
         },
         bottomBar = {
             Column(
@@ -110,7 +102,7 @@ fun HomeScreen(
                 fontFamily = bodyFontFamily,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.alpha(0.8f)
+                modifier = Modifier.alpha(0.7f)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -119,21 +111,24 @@ fun HomeScreen(
             Image(
                 painter = painterResource(R.drawable.face),
                 contentDescription = "Opsis Face Recognition Logo",
-                modifier = modifier
-                    .fillMaxWidth()
-                    .height(350.dp),
+                modifier = Modifier
+                    .fillMaxWidth(0.95f)
+                    .height(350.dp)
+                    .align(Alignment.CenterHorizontally),
                 contentScale = ContentScale.Crop
             )
 
+
             Spacer(modifier = Modifier.height(48.dp))
 
+            // Action Buttons
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),
-                onClick = { TODO("NAVIGATE TO START FACE SCAN PREP") }
+                onClick = { navController.navigate("scan_prep") }
             ) {
                 Text(
                     "START FACE SCAN",
@@ -152,7 +147,7 @@ fun HomeScreen(
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = MaterialTheme.colorScheme.primaryContainer
                 ),
-                onClick = { TODO("NAVIGATE TO START VERIFY IDENTITY PREP") }
+                onClick = { navController.navigate("verify_prep") }
             ) {
                 Text("VERIFY IDENTITY",
                     fontFamily = displayFontFamily,
@@ -160,7 +155,6 @@ fun HomeScreen(
                     modifier = Modifier.padding(8.dp)
                 )
             }
-
         }
     }
 }
