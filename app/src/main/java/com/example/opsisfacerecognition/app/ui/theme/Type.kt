@@ -1,4 +1,4 @@
-package com.example.opsisfacerecognition.ui.theme
+package com.example.opsisfacerecognition.app.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.font.Font

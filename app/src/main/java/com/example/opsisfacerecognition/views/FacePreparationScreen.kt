@@ -1,9 +1,8 @@
-package com.example.opsisfacerecognition.ui.components
+package com.example.opsisfacerecognition.views
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,27 +37,63 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.opsisfacerecognition.ui.theme.bodyFontFamily
-import com.example.opsisfacerecognition.ui.theme.displayFontFamily
+import androidx.navigation.NavController
+import com.example.opsisfacerecognition.app.ui.theme.bodyFontFamily
+import com.example.opsisfacerecognition.app.ui.theme.displayFontFamily
+import com.example.opsisfacerecognition.core.dialogs.PermissionDialog
+import com.example.opsisfacerecognition.core.layout.AppScreenContainer
+import com.example.opsisfacerecognition.core.permissions.rememberCameraPermissionRequester
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FacePrepContent(
+fun FacePreparationScreen(
+    navController: NavController,
     title: String,
     subtitle: String,
     @DrawableRes illustrationRes: Int,
     buttonText: String,
     tip: String,
-    onPrimaryClick: () -> Unit,
-    onBack: () -> Unit,
+    onGo: String,
     modifier: Modifier = Modifier,
 ) {
+    val (camera, ui) = rememberCameraPermissionRequester(
+        onGranted = { navController.navigate(onGo) }
+    )
+
+    if (ui.showRationaleDialog) {
+        PermissionDialog(
+            title = "Camera permission required",
+            message = "Camera access is required to perform face scanning.",
+            confirmText = "Allow",
+            dismissText = "Cancel",
+            onConfirm = {
+                ui.dismissRationale()
+                camera.request()
+            },
+            onDismiss = ui.dismissRationale
+        )
+    }
+
+    if (ui.showSettingsDialog) {
+        PermissionDialog(
+            title = "Permission permanently denied",
+            message = "Camera access has been blocked. Please enable it from app settings.",
+            confirmText = "Open settings",
+            dismissText = "Cancel",
+            onConfirm = {
+                ui.dismissSettings()
+                camera.openAppSettings()
+            },
+            onDismiss = ui.dismissSettings
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { },
                 navigationIcon = {
-                    IconButton(onClick =  onBack ) {
+                    IconButton(onClick = { navController.popBackStack() }  ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = "Back",
@@ -69,7 +104,7 @@ fun FacePrepContent(
             )
         }
     ) { innerPadding ->
-        Column(
+        AppScreenContainer(
             modifier = modifier
                 .fillMaxSize()
                 .padding(innerPadding)
@@ -116,7 +151,7 @@ fun FacePrepContent(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),
-                onClick = onPrimaryClick
+                onClick = { camera.request() }
             ) {
                 Text(
                     buttonText,
