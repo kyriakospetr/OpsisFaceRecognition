@@ -31,10 +31,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.opsisfacerecognition.R
-import com.example.opsisfacerecognition.ui.layout.AppScreenContainer
-import com.example.opsisfacerecognition.ui.layout.LocalAppInsets
-import com.example.opsisfacerecognition.ui.theme.bodyFontFamily
-import com.example.opsisfacerecognition.ui.theme.displayFontFamily
+import com.example.opsisfacerecognition.core.layout.AppScreenContainer
+import com.example.opsisfacerecognition.core.layout.LocalAppInsets
+import com.example.opsisfacerecognition.app.ui.theme.bodyFontFamily
+import com.example.opsisfacerecognition.app.ui.theme.displayFontFamily
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,7 +86,6 @@ fun HomeScreen(
         AppScreenContainer(
             modifier = Modifier.padding(innerPadding)
         ) {
-
                 Text(
                     text = "Opsis Face Recognition",
                     fontFamily = displayFontFamily,
@@ -124,7 +123,7 @@ fun HomeScreen(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),
-                onClick = { navController.navigate("face_scan_prep") }
+                onClick = { navController.navigate("face_enroll_prep") }
             ) {
                 Text(
                     "START FACE SCAN",

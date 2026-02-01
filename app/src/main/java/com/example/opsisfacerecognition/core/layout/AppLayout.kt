@@ -1,9 +1,10 @@
-package com.example.opsisfacerecognition.ui.layout
+package com.example.opsisfacerecognition.core.layout
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+import androidx.compose.ui.unit.Dp
 
 val LocalWindowSizeClass = staticCompositionLocalOf<WindowSizeClass> {
     error("WindowSizeClass not provided")
@@ -11,8 +12,8 @@ val LocalWindowSizeClass = staticCompositionLocalOf<WindowSizeClass> {
 
 @Stable
 data class AppInsets(
-    val horizontal: androidx.compose.ui.unit.Dp,
-    val maxContentWidth: androidx.compose.ui.unit.Dp? = null
+    val horizontal: Dp,
+    val maxContentWidth: Dp? = null
 )
 
 val LocalAppInsets = staticCompositionLocalOf {

@@ -1,4 +1,4 @@
-package com.example.opsisfacerecognition.ui.theme
+package com.example.opsisfacerecognition.app.ui.theme
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme

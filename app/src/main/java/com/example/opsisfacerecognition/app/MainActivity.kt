@@ -1,4 +1,4 @@
-package com.example.opsisfacerecognition
+package com.example.opsisfacerecognition.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -6,10 +6,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
-import com.example.opsisfacerecognition.core.AppNavigation
-import com.example.opsisfacerecognition.ui.layout.ProvideAppLayout
-import com.example.opsisfacerecognition.ui.theme.OpsisFaceRecognitionTheme
+import com.example.opsisfacerecognition.app.ui.theme.OpsisFaceRecognitionTheme
+import com.example.opsisfacerecognition.core.layout.ProvideAppLayout
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -17,13 +18,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             OpsisFaceRecognitionTheme {
-                // 1. Υπολογίζουμε το μέγεθος της οθόνης
                 val windowSizeClass = calculateWindowSizeClass(this)
-
-                // 2. Ενεργοποιούμε το Responsive Layout μας
                 ProvideAppLayout(windowSizeClass = windowSizeClass) {
-
-                    // 3. Καλούμε το Navigation μέσα στο Layout
                     AppNavigation()
                 }
             }

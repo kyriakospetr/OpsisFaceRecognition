@@ -1,4 +1,4 @@
-package com.example.opsisfacerecognition.core
+package com.example.opsisfacerecognition.core.permissions
 
 import android.Manifest
 import android.app.Activity
