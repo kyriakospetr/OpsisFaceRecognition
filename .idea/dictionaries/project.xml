@@ -1,9 +1,15 @@
 <component name="ProjectDictionaryState">
   <dictionary name="project">
     <words>
+      <w>bbox</w>
+      <w>bboxes</w>
       <w>endum</w>
+      <w>facenet</w>
+      <w>mobilefacenet</w>
+      <w>nhwc</w>
       <w>opsis</w>
       <w>strictuml</w>
+      <w>tflite</w>
     </words>
   </dictionary>
 </component>
