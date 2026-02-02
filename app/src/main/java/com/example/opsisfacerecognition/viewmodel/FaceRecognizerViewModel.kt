@@ -1,8 +1,7 @@
 package com.example.opsisfacerecognition.viewmodel
 
-import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
-import com.example.opsisfacerecognition.core.states.FaceUiState
+import com.example.opsisfacerecognition.core.states.FaceDetectionUiState
 import com.example.opsisfacerecognition.domain.usecase.EnrollFaceUseCase
 import com.example.opsisfacerecognition.domain.usecase.VerifyFaceUseCase
 import com.google.mlkit.vision.face.Face
@@ -17,7 +16,7 @@ class FaceRecognizerViewModel @Inject constructor(
     private val verifyFaceUseCase: VerifyFaceUseCase
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<FaceUiState>(FaceUiState.Idle)
+    private val _uiState = MutableStateFlow<FaceDetectionUiState>(FaceDetectionUiState.Idle)
     val uiState = _uiState.asStateFlow()
 
     // We get the faces from our FaceDetector
@@ -25,14 +24,14 @@ class FaceRecognizerViewModel @Inject constructor(
     fun onFacesDetected(faces: List<Face>) {
         when {
             faces.isEmpty() -> {
-                _uiState.value = FaceUiState.Scanning
+                _uiState.value = FaceDetectionUiState.Scanning
             }
             faces.size > 1 -> {
                 // We need only one face
-                _uiState.value = FaceUiState.MultipleFacesDetected
+                _uiState.value = FaceDetectionUiState.MultipleFacesDetected
             }
             else -> {
-                _uiState.value = FaceUiState.Success
+                _uiState.value = FaceDetectionUiState.Success
                 val face = faces.first()
                 enrollFace(face)
             }

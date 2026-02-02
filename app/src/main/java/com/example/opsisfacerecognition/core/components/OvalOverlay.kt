@@ -26,7 +26,7 @@ fun OvalOverlay(
     onCenterCalculated: (Offset) -> Unit,
 ) {
 
-    // Determine the border color based on detection state
+    // Determine the border color based on the isFaceDetected
     val ovalColor = if (isFaceDetected) {
         MaterialTheme.colorScheme.primaryContainer
     }else {
@@ -39,6 +39,7 @@ fun OvalOverlay(
     val currentCenter = remember { mutableStateOf<Offset?>(null) }
 
     Canvas(modifier = modifier) {
+        // Canvas only draws to pixels not dp
         // Convert dp units to raw pixels based on the current device density
         val widthPx = ovalWidth.toPx()
         val heightPx = ovalHeight.toPx()

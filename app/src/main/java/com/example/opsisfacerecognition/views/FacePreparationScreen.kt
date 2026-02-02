@@ -108,7 +108,6 @@ fun FacePreparationScreen(
             modifier = modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 24.dp)
         ) {
             Text(
                 text = title,
