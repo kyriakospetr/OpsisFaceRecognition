@@ -52,6 +52,8 @@ class FaceDetector(
 
             // Images from front-camera are rotated
             val rotationDegrees = imageProxy.imageInfo.rotationDegrees
+
+            // We convert to InputImage for our ML KIT
             val inputImage = InputImage.fromMediaImage(mediaImage, rotationDegrees)
 
             // Since they are rotated we swap width, height
@@ -63,6 +65,9 @@ class FaceDetector(
             val scaleY = screenHeight / imageHeight.toFloat()
             val scale = maxOf(scaleX, scaleY)
 
+            val dx = (screenWidth  - imageWidth  * scale) / 2f
+            val dy = (screenHeight - imageHeight * scale) / 2f
+
             // Suspend until ML Kit processing is complete
             suspendCoroutine { continuation ->
                 faceDetector.process(inputImage)
@@ -73,8 +78,11 @@ class FaceDetector(
                             val rawCenterX = face.boundingBox.centerX().toFloat()
                             val rawCenterY = face.boundingBox.centerY().toFloat()
 
-                            val screenX = screenWidth - (rawCenterX * scale)
-                            val screenY = rawCenterY * scale
+                            val mappedX = rawCenterX * scale + dx
+                            val mappedY = rawCenterY * scale + dy
+
+                            val screenX = screenWidth - mappedX   // mirror
+                            val screenY = mappedY
 
                             isFaceInsideOval(
                                 Offset(screenX, screenY),
@@ -128,13 +136,11 @@ fun startFaceDetection(
     ovalCenter: Offset,
     ovalWidthDp: Dp,
     ovalHeightDp: Dp,
+    previewWidthPx: Float,
+    previewHeightPx: Float,
     onFacesDetected: (List<Face>) -> Unit
 ) {
-    val metrics = context.resources.displayMetrics
-    val screenWidth = metrics.widthPixels.toFloat()
-    val screenHeight = metrics.heightPixels.toFloat()
-
-    // Convert to pixels for our detector
+    // Convert oval sizes from dp to px for our detector
     val ovalWidthPx = with(density) { ovalWidthDp.toPx() }
     val ovalHeightPx = with(density) { ovalHeightDp.toPx() }
 
@@ -142,8 +148,8 @@ fun startFaceDetection(
         ovalCenter = ovalCenter,
         ovalRadiusX = ovalWidthPx / 2f,
         ovalRadiusY = ovalHeightPx / 2f,
-        screenWidth = screenWidth,
-        screenHeight = screenHeight,
+        screenWidth = previewWidthPx,
+        screenHeight = previewHeightPx,
         onFacesDetected = onFacesDetected
     )
 
