@@ -61,6 +61,9 @@ dependencies {
     implementation(libs.hilt.android)
     implementation(libs.androidx.ui.geometry)
     implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.androidx.media3.common.ktx)
+    implementation(libs.ui)
+    implementation(libs.androidx.compose.animation)
     ksp(libs.hilt.compiler)
 
     implementation(libs.hilt.navigation.compose)

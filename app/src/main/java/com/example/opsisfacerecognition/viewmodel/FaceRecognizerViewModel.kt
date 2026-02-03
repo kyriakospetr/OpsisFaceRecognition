@@ -1,5 +1,6 @@
 package com.example.opsisfacerecognition.viewmodel
 
+import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import com.example.opsisfacerecognition.core.states.FaceDetectionUiState
 import com.example.opsisfacerecognition.domain.usecase.EnrollFaceUseCase
@@ -36,6 +37,10 @@ class FaceRecognizerViewModel @Inject constructor(
                 enrollFace(face)
             }
         }
+    }
+
+    fun onEnrollmentImagesCaptured(bitmapList: List<Bitmap>) {
+
     }
 
     private fun enrollFace(face: Face) {

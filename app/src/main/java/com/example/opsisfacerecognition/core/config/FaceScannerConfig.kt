@@ -3,13 +3,13 @@ package com.example.opsisfacerecognition.core.config
 object FaceScannerConfig {
     // Percentage
     // WIDTH
-    const val OVAL_WIDTH_PERCENT = 0.70f
+    const val OVAL_WIDTH_PERCENT = 0.80f
 
     // Height
-    const val OVAL_ASPECT_RATIO = 1.20f
+    const val OVAL_ASPECT_RATIO = 1.27f
 
     // Gap from top
-    const val TOP_MARGIN_PERCENT = 0.15f
+    const val TOP_MARGIN_PERCENT = 0.08f
 
     // Outline
     const val BORDER_WIDTH_DP = 2.5f

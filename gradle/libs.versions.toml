@@ -29,6 +29,9 @@ lifecycleRuntimeCompose = "2.10.0"
 ksp = "2.0.21-1.0.25"
 uiGeometryVersion = "1.10.2"
 foundationLayout = "1.10.2"
+media3CommonKtx = "1.9.1"
+uiVersion = "1.10.2"
+animation = "1.10.2"
 
 [libraries]
 material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
@@ -74,6 +77,9 @@ androidx-compose-ui-geometry = { group = "androidx.compose.ui", name = "ui-geome
 androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycleRuntimeCompose" }
 androidx-ui-geometry = { group = "androidx.compose.ui", name = "ui-geometry", version.ref = "uiGeometryVersion" }
 androidx-compose-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
+androidx-media3-common-ktx = { group = "androidx.media3", name = "media3-common-ktx", version.ref = "media3CommonKtx" }
+ui = { group = "androidx.compose.ui", name = "ui", version.ref = "uiVersion" }
+androidx-compose-animation = { group = "androidx.compose.animation", name = "animation", version.ref = "animation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
