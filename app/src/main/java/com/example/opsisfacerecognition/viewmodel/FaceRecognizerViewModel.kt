@@ -40,7 +40,7 @@ class FaceRecognizerViewModel @Inject constructor(
     }
 
     fun onEnrollmentImagesCaptured(bitmapList: List<Bitmap>) {
-
+        // TODO: tensorflow-lite-support
     }
 
     private fun enrollFace(face: Face) {

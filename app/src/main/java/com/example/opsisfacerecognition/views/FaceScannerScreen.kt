@@ -66,6 +66,7 @@ import com.example.opsisfacerecognition.core.states.FaceDetectionUiState
 import com.example.opsisfacerecognition.viewmodel.FaceRecognizerViewModel
 import com.google.mlkit.vision.face.Face
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.ui.platform.LocalContext
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -137,6 +138,7 @@ fun FaceScannerCameraZone(
     onEnrollmentImagesCaptured: (List<Bitmap>) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val density = LocalDensity.current
     var ovalCenter by remember { mutableStateOf<Offset?>(null) }
     var previewSize by remember { mutableStateOf(IntSize.Zero) }
@@ -183,6 +185,7 @@ fun FaceScannerCameraZone(
                     if (previewSize.width == 0 || previewSize.height == 0) return@remember null
 
                     FaceAnalyzer(
+                        context = context.applicationContext,
                         ovalCenter = center,
                         ovalRadiusX = ovalWidthPx / 2f,
                         ovalRadiusY = ovalHeightPx / 2f,
