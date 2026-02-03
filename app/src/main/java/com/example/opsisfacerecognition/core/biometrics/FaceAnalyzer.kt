@@ -1,7 +1,11 @@
 package com.example.opsisfacerecognition.core.biometrics
 
+import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Matrix
+import android.graphics.RectF
 import android.os.SystemClock
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
@@ -10,9 +14,13 @@ import androidx.compose.ui.geometry.Offset
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
+import com.google.mlkit.vision.face.FaceDetectorOptions
+import java.io.File
+import java.io.FileOutputStream
 import kotlin.math.abs
 
 class FaceAnalyzer(
+    private val context: Context,
     private val ovalCenter: Offset,
     private val ovalRadiusX: Float,
     private val ovalRadiusY: Float,
@@ -26,13 +34,19 @@ class FaceAnalyzer(
         private const val POSITION_TOLERANCE = 0.5f
         private const val MIN_FACE_SIZE_RATIO = 0.8f
         private const val MAX_ROTATION_DEG = 12f
-        private const val STABLE_DURATION_MS = 600L // How many seconds the face must stay inside the oval
+        private const val STABLE_DURATION_MS = 600L // How many ms the face must stay inside the oval
         private const val TARGET_SAMPLES = 4 // How many bitmaps we need to enroll a user
         private const val SAMPLE_INTERVAL_MS = 100L // Distance between samples
+        private const val MIRROR_OUTPUT = true
     }
 
     // Get the FaceDetector from ML KIT
-    private val faceDetector = FaceDetection.getClient()
+    private val faceDetector = FaceDetection.getClient(
+        FaceDetectorOptions.Builder()
+            .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+            .enableTracking()
+            .build()
+    )
 
     // State Tracking
     private var currentTrackingId: Int? = null // Id of the user we are tracking
@@ -144,6 +158,7 @@ class FaceAnalyzer(
     private fun resetState() {
         currentTrackingId = null
         stableSinceMs = null
+        lastSampleTimeMs = 0L
         collectedBitmaps.clear()
     }
 
@@ -212,10 +227,95 @@ class FaceAnalyzer(
     }
 
     // Placeholder for bitmap extraction
-    private fun captureFaceBitmap(proxy: ImageProxy, face: Face, rotation: Int): Bitmap? {
-        // Implement YUV to Bitmap conversion
-        return null
+    private fun captureFaceBitmap(
+        proxy: ImageProxy,
+        face: Face,
+        rotation: Int
+    ): Bitmap? {
+        // Convert ImageProxy to Bitmap
+        val src = proxy.toBitmap()
+
+        // Rotate the bitmap to upright, ML Kit bboxes are already in upright coordinates
+        val rotateM = Matrix().apply { postRotate(rotation.toFloat()) }
+        val srcBounds = RectF(0f, 0f, src.width.toFloat(), src.height.toFloat())
+        val dstBounds = RectF(srcBounds)
+        rotateM.mapRect(dstBounds)
+        rotateM.postTranslate(-dstBounds.left, -dstBounds.top)
+
+        val oriented = if (rotation % 360 == 0) {
+            src
+        } else {
+            Bitmap.createBitmap(src, 0, 0, src.width, src.height, rotateM, true)
+        }
+
+        // Use ML Kit bbox directly (upright coordinates)
+        val rectF = RectF(face.boundingBox)
+
+        // Mirror output if desired (selfie look) and keep bbox in sync
+        var finalBitmap = oriented
+        if (MIRROR_OUTPUT) {
+            val mirrorM = Matrix().apply {
+                postScale(-1f, 1f, finalBitmap.width / 2f, finalBitmap.height / 2f)
+            }
+            finalBitmap = Bitmap.createBitmap(
+                finalBitmap,
+                0,
+                0,
+                finalBitmap.width,
+                finalBitmap.height,
+                mirrorM,
+                true
+            )
+            mirrorM.mapRect(rectF)
+        }
+
+        // Add margin (10%)
+        // ML KIT bbox is strict
+        // we give it 10% margin in order to include all facial features
+        val margin = 0.10f
+        val w = rectF.width()
+        val h = rectF.height()
+        rectF.inset(-w * margin, -h * margin)
+
+        // With margin we can get out of bitmap and cause crashes
+        // Clamp inside bitmap
+        rectF.left = rectF.left.coerceIn(0f, finalBitmap.width.toFloat())
+        rectF.top = rectF.top.coerceIn(0f, finalBitmap.height.toFloat())
+        rectF.right = rectF.right.coerceIn(0f, finalBitmap.width.toFloat())
+        rectF.bottom = rectF.bottom.coerceIn(0f, finalBitmap.height.toFloat())
+
+        val cropW = (rectF.right - rectF.left).toInt()
+        val cropH = (rectF.bottom - rectF.top).toInt()
+
+        if (cropW <= 0 || cropH <= 0) {
+            Log.e("FaceDebug", "Invalid crop after clamp: rectF=$rectF")
+            return null
+        }
+
+        // We create the bitmap
+        val faceBitmap = Bitmap.createBitmap(finalBitmap, rectF.left.toInt(), rectF.top.toInt(), cropW, cropH)
+
+        // Save the bitmap to cache
+        saveBitmapToCache(context, faceBitmap, "face_${System.currentTimeMillis()}.jpg")
+
+        return faceBitmap
     }
+
+
+
+
+    private fun saveBitmapToCache(
+        context: Context,
+        bitmap: Bitmap,
+        fileName: String
+    ): File {
+        val file = File(context.cacheDir, fileName)
+        FileOutputStream(file).use { out ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
+        }
+        return file
+    }
+
 
     // Data class to hold mapping values
     private data class Mapping(val scale: Float, val dx: Float, val dy: Float)
