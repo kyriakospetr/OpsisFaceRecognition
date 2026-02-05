@@ -35,6 +35,7 @@ import com.example.opsisfacerecognition.core.layout.AppScreenContainer
 import com.example.opsisfacerecognition.core.layout.LocalAppInsets
 import com.example.opsisfacerecognition.app.ui.theme.bodyFontFamily
 import com.example.opsisfacerecognition.app.ui.theme.displayFontFamily
+import com.example.opsisfacerecognition.navigation.Routes
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,7 +50,7 @@ fun HomeScreen(
                 title = { },
                 actions = {
                     IconButton(
-                        onClick = { navController.navigate("settings") }
+                        onClick = { navController.navigate(Routes.SETTINGS) }
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.settings),
@@ -123,10 +124,10 @@ fun HomeScreen(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),
-                onClick = { navController.navigate("face_enroll_prep") }
+                onClick = { navController.navigate(Routes.ENROLL_PREP) }
             ) {
                 Text(
-                    "START FACE SCAN",
+                    "Start face scan",
                     fontFamily = displayFontFamily,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(8.dp)
@@ -142,9 +143,9 @@ fun HomeScreen(
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = MaterialTheme.colorScheme.primaryContainer
                 ),
-                onClick = { navController.navigate("face_verify_prep") }
+                onClick = { navController.navigate(Routes.VERIFY_PREP) }
             ) {
-                Text("VERIFY IDENTITY",
+                Text("Verify Identity",
                     fontFamily = displayFontFamily,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(8.dp)
@@ -153,4 +154,3 @@ fun HomeScreen(
         }
     }
 }
-

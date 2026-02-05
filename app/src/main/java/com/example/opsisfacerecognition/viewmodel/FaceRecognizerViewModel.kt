@@ -2,48 +2,148 @@ package com.example.opsisfacerecognition.viewmodel
 
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
-import com.example.opsisfacerecognition.core.states.FaceDetectionUiState
-import com.example.opsisfacerecognition.domain.usecase.EnrollFaceUseCase
-import com.example.opsisfacerecognition.domain.usecase.VerifyFaceUseCase
+import androidx.lifecycle.viewModelScope
+import com.example.opsisfacerecognition.core.states.FaceFlowMode
+import com.example.opsisfacerecognition.core.states.FaceUiState
+import com.example.opsisfacerecognition.domain.model.User
+import com.example.opsisfacerecognition.domain.usecase.ComputeEmbeddingUseCase
+import com.example.opsisfacerecognition.domain.usecase.EnrollUserUseCase
+import com.example.opsisfacerecognition.domain.usecase.FindUserByFullNameUseCase
+import com.example.opsisfacerecognition.domain.usecase.VerifyUserUseCase
 import com.google.mlkit.vision.face.Face
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
 class FaceRecognizerViewModel @Inject constructor(
-    private val enrollFaceUseCase: EnrollFaceUseCase,
-    private val verifyFaceUseCase: VerifyFaceUseCase
+    private val computeEmbeddingUseCase: ComputeEmbeddingUseCase,
+    private val findUserByFullNameUseCase: FindUserByFullNameUseCase,
+    private val enrollUserUseCase: EnrollUserUseCase,
+    private val verifyUserUseCase: VerifyUserUseCase
 ) : ViewModel() {
-
-    private val _uiState = MutableStateFlow<FaceDetectionUiState>(FaceDetectionUiState.Idle)
+    private val _uiState = MutableStateFlow<FaceUiState>(FaceUiState.Idle)
     val uiState = _uiState.asStateFlow()
+
+    private val _pendingUser = MutableStateFlow<User?>(null)
+    val pendingUser = _pendingUser.asStateFlow()
 
     // We get the faces from our FaceDetector
     // We handle different states
     fun onFacesDetected(faces: List<Face>) {
         when {
             faces.isEmpty() -> {
-                _uiState.value = FaceDetectionUiState.Scanning
+                _uiState.value = FaceUiState.Capture.Scanning
             }
             faces.size > 1 -> {
-                // We need only one face
-                _uiState.value = FaceDetectionUiState.MultipleFacesDetected
+                _uiState.value = FaceUiState.Capture.MultipleFacesDetected
             }
             else -> {
-                _uiState.value = FaceDetectionUiState.Success
-                val face = faces.first()
-                enrollFace(face)
+                _uiState.value = FaceUiState.Capture.DetectedSuccessfully
+            }
+        }
+    }
+    fun onImagesCaptured(bitmaps: List<Bitmap>, mode: FaceFlowMode) {
+        viewModelScope.launch(Dispatchers.Default) {
+            try {
+                withContext(Dispatchers.Main) {
+                    _uiState.value = FaceUiState.Loading
+                }
+
+                val embedding = computeEmbeddingUseCase(bitmaps)
+
+                val timestamp =
+                    java.text.SimpleDateFormat("yyyyMMdd_HHmm", java.util.Locale.getDefault())
+                        .format(java.util.Date())
+
+                val newUser = User(
+                    fullName = "User_$timestamp",
+                    embedding = embedding
+                )
+
+                when (mode) {
+                    FaceFlowMode.ENROLL -> {
+                        withContext(Dispatchers.Main) {
+                            _pendingUser.value = newUser
+                            _uiState.value = FaceUiState.Enroll.Processed
+                        }
+                    }
+                    FaceFlowMode.VERIFY -> {
+                        withContext(Dispatchers.Main) {
+                            _pendingUser.value = newUser
+                        }
+                        verifyUser()
+                    }
+                    FaceFlowMode.ENROLL_MASKED -> {
+                        withContext(Dispatchers.Main) {
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    _uiState.value = FaceUiState.Error("Failed to process capture: ${e.message}")
+                }
             }
         }
     }
 
-    fun onEnrollmentImagesCaptured(bitmapList: List<Bitmap>) {
-        // TODO: tensorflow-lite-support
+
+    fun enrollUser(fullName: String) {
+        val currentUser = _pendingUser.value
+        if (currentUser == null) {
+            _uiState.value = FaceUiState.Error("No pending user found.")
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val conflictUser = findUserByFullNameUseCase(fullName)
+                if(conflictUser != null) {
+                    _uiState.value = FaceUiState.Enroll.ConflictFullName
+                    return@launch
+                }
+                val updatedUser = currentUser.copy(fullName = fullName)
+                _pendingUser.value = updatedUser
+                _uiState.value = FaceUiState.Loading
+                withContext(Dispatchers.IO) {
+                    enrollUserUseCase(updatedUser)
+                }
+                _uiState.value = FaceUiState.Enroll.Completed
+            } catch (e: Exception) {
+                _uiState.value = FaceUiState.Error("Failed to save user: ${e.message}")
+            }
+        }
     }
 
-    private fun enrollFace(face: Face) {
-        //
+    fun verifyUser() {
+        //Check if the current user is null
+        val currentUser = _pendingUser.value
+        if (currentUser == null) {
+            _uiState.value = FaceUiState.Error("No pending user found. Please rescan.")
+            return
+        }
+
+        // Get the embedding from the current user
+        val embedding: FloatArray = currentUser.embedding
+        viewModelScope.launch {
+            try {
+                _uiState.value = FaceUiState.Loading
+                // We don't use the main thread as calculating this is heavy resource
+                val user: User? = withContext(Dispatchers.IO) {
+                    verifyUserUseCase(embedding)
+                }
+                _pendingUser.value = user
+                _uiState.value = if (user != null) {
+                    FaceUiState.Verify.Verified
+                } else {
+                    FaceUiState.Verify.NotVerified
+                }
+            } catch (e: Exception) {
+                _uiState.value = FaceUiState.Error("Failed to get user: ${e.message}")
+            }
+        }
     }
 }
