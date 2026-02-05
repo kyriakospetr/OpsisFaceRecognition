@@ -25,6 +25,7 @@ class MobileFaceNetLiteRT @Inject constructor(
     private val inputBuffers = model.createInputBuffers()
     private val outputBuffers = model.createOutputBuffers()
 
+    // Model expects a 112x112
     private val imageProcessor = ImageProcessor.Builder()
         .add(ResizeOp(112, 112, ResizeOp.ResizeMethod.BILINEAR))
         .add(NormalizeOp(127.5f, 128.0f))
@@ -32,7 +33,7 @@ class MobileFaceNetLiteRT @Inject constructor(
 
     fun getEmbedding(faceBitmap: Bitmap): FloatArray {
         val bmp = if (faceBitmap.config == Bitmap.Config.ARGB_8888) faceBitmap
-        else faceBitmap.copy(Bitmap.Config.ARGB_8888, false)
+                  else faceBitmap.copy(Bitmap.Config.ARGB_8888, false)
 
         var tensorImage = TensorImage(DataType.FLOAT32)
         tensorImage.load(bmp)
@@ -41,10 +42,51 @@ class MobileFaceNetLiteRT @Inject constructor(
         inputBuffers[0].writeFloat(tensorImage.tensorBuffer.floatArray)
         model.run(inputBuffers, outputBuffers)
 
-        return outputBuffers[0].readFloat()
+        val embedding = outputBuffers[0].readFloat()
+
+        return embedding
+    }
+
+    fun l2Normalize(vector: FloatArray): FloatArray {
+        var sum = 0f
+        for (v in vector) {
+            sum += v * v
+        }
+
+        val norm = kotlin.math.sqrt(sum)
+        if (norm < 1e-10f) return vector
+
+        for (i in vector.indices) {
+            vector[i] /= norm
+        }
+        return vector
     }
 
     override fun close() {
         model.close()
+    }
+
+    fun averageEmbeddings(list: List<FloatArray>): FloatArray {
+        val size = list.first().size
+        val avg = FloatArray(size)
+
+        for (emb in list) {
+            for (i in 0 until size) {
+                avg[i] += emb[i]
+            }
+        }
+
+        for (i in 0 until size) {
+            avg[i] /= list.size
+        }
+        return avg
+    }
+
+    fun cosineSimilarity(a: FloatArray, b: FloatArray): Float {
+        var dot = 0f
+        for (i in a.indices) {
+            dot += a[i] * b[i]
+        }
+        return dot
     }
 }

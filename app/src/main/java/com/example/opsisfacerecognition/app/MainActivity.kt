@@ -8,6 +8,7 @@ import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSiz
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import com.example.opsisfacerecognition.app.ui.theme.OpsisFaceRecognitionTheme
 import com.example.opsisfacerecognition.core.layout.ProvideAppLayout
+import com.example.opsisfacerecognition.navigation.AppNavigation
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
