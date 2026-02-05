@@ -27,7 +27,7 @@ class FaceAnalyzer(
     private val screenWidth: Float,
     private val screenHeight: Float,
     private val onFacesDetected: (List<Face>) -> Unit,
-    private val onEnrollmentImagesCaptured: (List<Bitmap>) -> Unit
+    private val onImagesCaptured: (List<Bitmap>) -> Unit
 ) : ImageAnalysis.Analyzer {
 
     companion object {
@@ -148,7 +148,7 @@ class FaceAnalyzer(
                 // If we have as much samples as we need, we have finished
                 if (collectedBitmaps.size >= TARGET_SAMPLES) {
                     isFinished = true
-                    onEnrollmentImagesCaptured(collectedBitmaps.toList())
+                    onImagesCaptured(collectedBitmaps.toList())
                 }
             }
         }

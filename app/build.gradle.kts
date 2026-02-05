@@ -92,8 +92,6 @@ dependencies {
     implementation(libs.litert)
     implementation(libs.tflite.support.api)
 
-
-
     // Room DB
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)

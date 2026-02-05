@@ -62,31 +62,96 @@ import com.example.opsisfacerecognition.core.components.CameraPreviewWithAnalysi
 import com.example.opsisfacerecognition.core.components.OvalOverlay
 import com.example.opsisfacerecognition.core.config.FaceScannerConfig
 import com.example.opsisfacerecognition.core.layout.AppScreenContainer
-import com.example.opsisfacerecognition.core.states.FaceDetectionUiState
+import com.example.opsisfacerecognition.core.states.FaceFlowMode
+import com.example.opsisfacerecognition.core.states.FaceUiState
+import com.example.opsisfacerecognition.navigation.Routes
 import com.example.opsisfacerecognition.viewmodel.FaceRecognizerViewModel
 import com.google.mlkit.vision.face.Face
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FaceScannerScreen(
+fun ScannerScreen(
     navController: NavController,
+    title: String,
+    subTitle: String,
+    popUpToRoute: String,
+    backRoute: String,
+    mode: FaceFlowMode,
     viewModel: FaceRecognizerViewModel = hiltViewModel()
 ) {
 
     // Ui state from our view model
-    // It's used to determine if faces are successfully detected
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    // Based on the mode, we navigate by FaceUiState
+    LaunchedEffect(uiState) {
+        when (mode) {
+            FaceFlowMode.ENROLL -> {
+                if (uiState is FaceUiState.Enroll.Processed) {
+                    navController.navigate(Routes.ENROLL_PROCESSED) {
+                        launchSingleTop = true
+                    }
+                } else if (uiState is FaceUiState.Error) {
+                    navController.navigate(Routes.ENROLL_MASKED_FAILED) {
+                        popUpTo(Routes.HOME)
+                        launchSingleTop = true
+                    }
+                }
+            }
+            FaceFlowMode.VERIFY -> {
+                when (uiState) {
+                    is FaceUiState.Verify.Verified -> {
+                        navController.navigate(Routes.VERIFY_SUCCESS) {
+                            popUpTo(Routes.VERIFY_GRAPH)
+                            launchSingleTop = true
+                        }
+                    }
+
+                    is FaceUiState.Verify.NotVerified -> {
+                        navController.navigate(Routes.VERIFY_FAILED) {
+                            popUpTo(Routes.HOME)
+                            launchSingleTop = true
+                        }
+                    }
+
+                    is FaceUiState.Error -> {
+                        navController.navigate(Routes.VERIFY_FAILED) {
+                            popUpTo(Routes.HOME)
+                            launchSingleTop = true
+                        }
+                    }
+
+                    else -> {}
+                }
+            }
+            FaceFlowMode.ENROLL_MASKED -> {
+                if (uiState is FaceUiState.EnrollMasked.Processed || uiState is FaceUiState.Error) {
+                    navController.navigate(Routes.ENROLL_MASKED_FAILED) {
+                        popUpTo(Routes.HOME)
+                        launchSingleTop = true
+                    }
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = {
+                        val popped = navController.popBackStack(backRoute, false)
+                        if (!popped) {
+                            navController.navigate(backRoute)
+                        }
+                    }) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -102,14 +167,14 @@ fun FaceScannerScreen(
             // Header Section
             Column {
                 Text(
-                    text = "Face Enrollment",
+                    text = title,
                     fontFamily = displayFontFamily,
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "Align your face with the guide. We’ll capture when it’s stable.",
+                    text = subTitle,
                     fontFamily = bodyFontFamily,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -123,7 +188,7 @@ fun FaceScannerScreen(
             FaceScannerCameraZone(
                 uiState = uiState,
                 onFacesDetected = viewModel::onFacesDetected,
-                onEnrollmentImagesCaptured = viewModel::onEnrollmentImagesCaptured,
+                onImagesCaptured = { bitmaps -> viewModel.onImagesCaptured(bitmaps, mode) },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -133,9 +198,9 @@ fun FaceScannerScreen(
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun FaceScannerCameraZone(
-    uiState: FaceDetectionUiState,
+    uiState: FaceUiState,
     onFacesDetected: (List<Face>) -> Unit,
-    onEnrollmentImagesCaptured: (List<Bitmap>) -> Unit,
+    onImagesCaptured: (List<Bitmap>) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -147,7 +212,16 @@ fun FaceScannerCameraZone(
     val status = getScannerStatus(uiState)
 
     // We use this variable to determine the border of our oval shape
-    val isFaceDetected = uiState is FaceDetectionUiState.Success
+    val isFaceDetected = uiState is FaceUiState.Capture.DetectedSuccessfully
+    val isProcessing =
+        uiState is FaceUiState.Loading ||
+        uiState is FaceUiState.Enroll.Processed ||
+        uiState is FaceUiState.Verify.Verified ||
+        uiState is FaceUiState.Verify.NotVerified
+    val fadeAlpha by animateFloatAsState(
+        targetValue = if (isProcessing) 0.65f else 0f,
+        label = "cameraFade"
+    )
 
     Card(
         modifier = modifier
@@ -192,7 +266,7 @@ fun FaceScannerCameraZone(
                         screenWidth = previewSize.width.toFloat(),
                         screenHeight = previewSize.height.toFloat(),
                         onFacesDetected = onFacesDetected,
-                        onEnrollmentImagesCaptured = onEnrollmentImagesCaptured
+                        onImagesCaptured = onImagesCaptured
                     )
                 }
 
@@ -202,6 +276,15 @@ fun FaceScannerCameraZone(
                     CameraPreviewWithAnalysis(Modifier.fillMaxSize(), analyzer = faceAnalyzer)
                 } else {
                     CameraPreviewOnly(Modifier.fillMaxSize())
+                }
+
+                // Fade overlay during processing
+                if (fadeAlpha > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = fadeAlpha))
+                    )
                 }
 
                 // Our oval
@@ -320,12 +403,17 @@ data class ScannerStatus(val message: String, val tone: MessageTone)
 enum class MessageTone {
     Neutral, Success, Error
 }
-private fun getScannerStatus(uiState: FaceDetectionUiState): ScannerStatus {
-    return when (uiState) {
-        FaceDetectionUiState.Idle -> ScannerStatus("Initializing camera...", MessageTone.Neutral)
-        FaceDetectionUiState.Scanning -> ScannerStatus("Position your face inside the oval", MessageTone.Neutral)
-        FaceDetectionUiState.MultipleFacesDetected -> ScannerStatus("Multiple faces detected. Use only one.", MessageTone.Error)
-        FaceDetectionUiState.Success -> ScannerStatus("Face detected! Hold still...", MessageTone.Success)
-        is FaceDetectionUiState.Error -> ScannerStatus(uiState.message, MessageTone.Error)
+private fun getScannerStatus(uiState: FaceUiState): ScannerStatus =
+    when (uiState) {
+        FaceUiState.Idle -> ScannerStatus("Initializing camera...", MessageTone.Neutral)
+        FaceUiState.Loading -> ScannerStatus("Processing...", MessageTone.Neutral)
+        FaceUiState.Capture.Scanning -> ScannerStatus("Position your face inside the oval", MessageTone.Neutral)
+        FaceUiState.Capture.MultipleFacesDetected -> ScannerStatus("Multiple faces detected. Use only one.", MessageTone.Error)
+        FaceUiState.Capture.DetectedSuccessfully -> ScannerStatus("Face detected! Hold still...", MessageTone.Success)
+        FaceUiState.Enroll.Processed -> ScannerStatus("Finalizing...", MessageTone.Neutral)
+        is FaceUiState.Verify.Verified -> ScannerStatus("Verified", MessageTone.Success)
+        FaceUiState.Verify.NotVerified -> ScannerStatus("Not verified", MessageTone.Error)
+        is FaceUiState.Error -> ScannerStatus(uiState.message, MessageTone.Error)
+
+        else -> ScannerStatus("", MessageTone.Neutral)
     }
-}

@@ -1,7 +1,7 @@
 package com.example.opsisfacerecognition.di
 
-import com.example.opsisfacerecognition.data.repository.FaceRepositoryImpl
-import com.example.opsisfacerecognition.domain.repository.FaceRepository
+import com.example.opsisfacerecognition.data.repository.UserRepositoryImpl
+import com.example.opsisfacerecognition.domain.repository.UserRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -15,7 +15,7 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindFaceRepository(
-        impl: FaceRepositoryImpl
-    ): FaceRepository
+        impl: UserRepositoryImpl
+    ): UserRepository
 
 }

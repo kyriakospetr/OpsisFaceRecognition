@@ -29,7 +29,7 @@ fun OvalOverlay(
     // Determine the border color based on the isFaceDetected
     val ovalColor = if (isFaceDetected) {
         MaterialTheme.colorScheme.primaryContainer
-    }else {
+    } else {
         MaterialTheme.colorScheme.error
     }
 
