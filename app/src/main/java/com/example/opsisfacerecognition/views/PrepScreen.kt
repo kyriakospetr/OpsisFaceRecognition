@@ -46,7 +46,7 @@ import com.example.opsisfacerecognition.core.permissions.rememberCameraPermissio
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FacePreparationScreen(
+fun PrepScreen(
     navController: NavController,
     title: String,
     subtitle: String,
