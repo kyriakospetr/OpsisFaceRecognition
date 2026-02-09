@@ -8,6 +8,6 @@ class EnrollUserUseCase @Inject constructor(
     private val repository: UserRepository,
 ) {
     suspend operator fun invoke(user: User) {
-        repository.enroll(user)
+        repository.insert(user)
     }
 }

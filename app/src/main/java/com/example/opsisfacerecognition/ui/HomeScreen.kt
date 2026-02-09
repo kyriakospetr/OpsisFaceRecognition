@@ -1,4 +1,4 @@
-package com.example.opsisfacerecognition.views
+package com.example.opsisfacerecognition.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -28,11 +28,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.opsisfacerecognition.R
-import com.example.opsisfacerecognition.core.layout.AppScreenContainer
-import com.example.opsisfacerecognition.core.layout.LocalAppInsets
+import com.example.opsisfacerecognition.core.ui.layout.AppScreenContainer
+import com.example.opsisfacerecognition.core.ui.layout.LocalAppInsets
 import com.example.opsisfacerecognition.app.ui.theme.bodyFontFamily
 import com.example.opsisfacerecognition.app.ui.theme.displayFontFamily
 import com.example.opsisfacerecognition.navigation.Routes
@@ -71,14 +72,18 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = LocalAppInsets.current.horizontal, vertical = 20.dp),
+                .padding(horizontal = LocalAppInsets.current.horizontal, vertical = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = "Opsis Face Recognition 2026",
+                    fontFamily = bodyFontFamily,
                     style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.9f)
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .alpha(0.7f)
                 )
             }
         }

@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.example.opsisfacerecognition.data.entity.EmbeddingConverters
 import com.example.opsisfacerecognition.data.entity.UserEntity
-import com.example.opsisfacerecognition.data.storage.UserDao
+import com.example.opsisfacerecognition.data.local.dao.UserDao
 
 @Database(entities = [UserEntity::class], version = 1)
 @TypeConverters(EmbeddingConverters::class)

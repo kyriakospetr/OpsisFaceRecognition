@@ -1,4 +1,4 @@
-package com.example.opsisfacerecognition.views
+package com.example.opsisfacerecognition.ui
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
@@ -40,8 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.opsisfacerecognition.app.ui.theme.bodyFontFamily
 import com.example.opsisfacerecognition.app.ui.theme.displayFontFamily
-import com.example.opsisfacerecognition.core.dialogs.PermissionDialog
-import com.example.opsisfacerecognition.core.layout.AppScreenContainer
+import com.example.opsisfacerecognition.core.ui.dialogs.PermissionDialog
+import com.example.opsisfacerecognition.core.ui.layout.AppScreenContainer
 import com.example.opsisfacerecognition.core.permissions.rememberCameraPermissionRequester
 
 @OptIn(ExperimentalMaterial3Api::class)
