@@ -10,27 +10,30 @@ class VerifyUserUseCase @Inject constructor(
     private val repository: UserRepository,
     private val faceNetLiteRT: MobileFaceNetLiteRT
 ) {
+    companion object {
+        private const val VERIFICATION_THRESHOLD = 0.82f
+    }
+
     suspend operator fun invoke(embedding: FloatArray): User? {
         // Retrieve all enrolled users
         val users = repository.list()
         if (users.isEmpty()) return null
 
         // Compute cosine similarity for each user
-        val (bestUser, bestScore) = users
+        val allScores = users
             .map { user ->
                 user to faceNetLiteRT.cosineSimilarity(embedding, user.embedding)
             }
-            .maxByOrNull { it.second } ?: return null
+        val (bestUser, bestScore) = allScores.maxByOrNull { it.second } ?: return null
 
-        // Verification threshold
-        val threshold = 0.80f
+        val verificationThreshold = VERIFICATION_THRESHOLD
+        val isAccepted = bestScore >= verificationThreshold
 
         // Accept only if similarity is high enough
-        return if (bestScore >= threshold) {
+        return if (isAccepted) {
             bestUser.toUser()
         } else {
             null
         }
     }
 }
-

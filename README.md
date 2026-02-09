@@ -20,7 +20,7 @@ In verification mode, it:
 
 - computes an embedding from a new scan
 - compares it with all stored users (cosine similarity)
-- accepts the best match only if score is >= `0.80`
+- accepts the best match only if score is >= `verification_threshold` (currently `0.82`)
 
 ## Stack / Technologies
 
@@ -122,7 +122,7 @@ There is no full test coverage yet for biometrics and UI flows.
 
 - This project is for educational/experimental use.
 - It does not include liveness detection.
-- Verification threshold is fixed (`0.80`) and should be calibrated for production.
+- `verification_threshold` is currently `0.82` (in `VerifyUserUseCase`), based on initial self-tests, and needs further testing/calibration with more users.
 - Database is not encrypted by default.
 
 ## Extra Material
