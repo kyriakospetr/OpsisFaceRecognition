@@ -29,6 +29,7 @@ In verification mode, it:
 - Google ML Kit Face Detection
 - LiteRT + TensorFlow Lite Support API (MobileFaceNet inference)
 - Room Database
+- SQLCipher (encrypted Room database)
 - Hilt (DI)
 - Navigation Compose
 
@@ -74,12 +75,14 @@ Then it captures 4 samples and computes average embedding + L2 normalization.
 
 ## Data Storage
 
-Room DB: `app.db`, table `users`
+Encrypted Room DB (`app.db`) with SQLCipher, table `users`
 
 - `localId` (auto)
 - `userId` (UUID)
 - `fullName`
 - `embedding` (`FloatArray`, converted to `ByteArray`)
+
+Database passphrase is generated per install and protected via Android Keystore.
 
 No backend is used. Data stays locally on device.
 
@@ -123,7 +126,7 @@ There is no full test coverage yet for biometrics and UI flows.
 - This project is for educational/experimental use.
 - It does not include liveness detection.
 - `verification_threshold` is currently `0.82` (in `VerifyUserUseCase`), based on initial self-tests, and needs further testing/calibration with more users.
-- Database is not encrypted by default.
+- Existing plaintext DB is reset once when encrypted DB is initialized (no migration strategy).
 
 ## Extra Material
 

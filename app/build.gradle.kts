@@ -50,6 +50,9 @@ android {
     androidResources {
         noCompress += "tflite"
     }
+    kotlinOptions {
+        freeCompilerArgs = listOf("-XXLanguage:+PropertyParamAnnotationDefaultTargetMode")
+    }
 
     configurations.configureEach {
         exclude(group = "com.google.ai.edge.litert", module = "litert-api")
@@ -94,6 +97,7 @@ dependencies {
     // Room DB
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
+    implementation(libs.sqlcipher.android)
     ksp(libs.room.compiler)
 
     implementation(libs.androidx.core.ktx)
