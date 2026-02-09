@@ -211,7 +211,7 @@ fun FaceScannerCameraZone(
     val status = getScannerStatus(uiState)
 
     // We use this variable to determine the border of our oval shape
-    val isFaceDetected = uiState is Detection.FaceDetected || uiState is Detection.HoldStill
+    val isFaceDetected = uiState is Detection.FaceDetected || uiState is Detection.HoldStill || uiState is Detection.PerformLiveness
     val isProcessing =
         uiState is FaceUiState.Loading ||
         uiState is FaceUiState.Enroll.CaptureProcessed ||
@@ -422,6 +422,8 @@ private fun getScannerStatus(uiState: FaceUiState): ScannerStatus =
         Detection.MoveCloser -> ScannerStatus("Move a bit closer to the camera.", MessageTone.Neutral)
         Detection.HoldStill -> ScannerStatus("Hold still.", MessageTone.Neutral)
         Detection.ImproveFocus -> ScannerStatus("Image is blurry. Improve focus and try again.", MessageTone.Error)
+        Detection.PerformLiveness -> ScannerStatus("Liveness check: blink naturally.", MessageTone.Neutral)
+        Detection.LivenessFailed -> ScannerStatus("Liveness check failed. Please try again.", MessageTone.Error)
         FaceUiState.Enroll.CaptureProcessed -> ScannerStatus("Capture complete. Preparing enrollment...", MessageTone.Neutral)
         FaceUiState.Enroll.FullNameConflict -> ScannerStatus("This name is already in use.", MessageTone.Error)
         FaceUiState.Enroll.Completed -> ScannerStatus("Enrollment completed.", MessageTone.Success)

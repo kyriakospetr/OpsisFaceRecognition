@@ -48,6 +48,12 @@ class FaceAnalyzer(
         private const val SAME_FEEDBACK_COOLDOWN_MS = 400L // Cooldown for repeated identical feedback
         private const val FEEDBACK_SWITCH_COOLDOWN_MS = 140L // Minimum spacing between different feedback states
 
+        // Liveness checks based on blink challenge
+        // User has to blink once (open -> closed -> open) before capture starts
+        private const val LIVENESS_TIMEOUT_MS = 6000L
+        private const val EYE_OPEN_THRESHOLD = 0.70f
+        private const val EYE_CLOSED_THRESHOLD = 0.35f
+
         // For our facenet Model
         // They are used to create the bitmap
         private const val FACE_SIZE = 112
@@ -66,6 +72,7 @@ class FaceAnalyzer(
     private val faceDetector = FaceDetection.getClient(
         FaceDetectorOptions.Builder()
             .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+            .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
             .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
             .enableTracking()
             .build()
@@ -80,6 +87,9 @@ class FaceAnalyzer(
     private var isCaptureComplete = false // To determine if we should end the face detection process
     private var lastFeedback: Detection? = null // Our lastFeedback
     private var lastFeedbackTimeMs: Long = 0L // When was the last time we sent a feedback
+    private var livenessState = LivenessState.WAITING_FOR_OPEN_EYES
+    private var livenessStartTimeMs: Long? = null
+    private var livenessPassed = false
 
     @OptIn(ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {
@@ -246,8 +256,6 @@ class FaceAnalyzer(
             return
         }
 
-        emitDetection(Detection.FaceDetected, currentTime)
-
         if (!hasReachedStability(currentTime)) {
             return
         }
@@ -262,6 +270,12 @@ class FaceAnalyzer(
             emitDetection(Detection.MoveCloser, currentTime)
             return
         }
+
+        if (!checkLiveness(face, currentTime)) {
+            return
+        }
+
+        emitDetection(Detection.FaceDetected, currentTime)
 
         if (shouldCaptureSample(currentTime)) {
             captureFaceSample(imageProxy, face, rotationDegrees, currentTime)
@@ -286,6 +300,7 @@ class FaceAnalyzer(
             stabilityStartTimeMs = null
             lastSampleTimeMs = 0L
             capturedBitmaps.clear()
+            resetLivenessState()
             return false
         }
 
@@ -364,6 +379,57 @@ class FaceAnalyzer(
     // We don't immediately start capturing 4 pictures
     private fun shouldCaptureSample(currentTime: Long): Boolean {
         return currentTime - lastSampleTimeMs >= SAMPLE_INTERVAL_MS
+    }
+
+    private fun checkLiveness(face: Face, currentTime: Long): Boolean {
+        if (livenessPassed) return true
+
+        if (livenessStartTimeMs == null) {
+            livenessStartTimeMs = currentTime
+        }
+
+        val elapsed = currentTime - (livenessStartTimeMs ?: currentTime)
+        if (elapsed > LIVENESS_TIMEOUT_MS) {
+            emitDetection(Detection.LivenessFailed, currentTime)
+            resetLivenessState()
+            stabilityStartTimeMs = null
+            return false
+        }
+
+        val leftEyeOpen = face.leftEyeOpenProbability
+        val rightEyeOpen = face.rightEyeOpenProbability
+        if (leftEyeOpen == null || rightEyeOpen == null) {
+            emitDetection(Detection.PerformLiveness, currentTime)
+            return false
+        }
+
+        val eyeOpenScore = (leftEyeOpen + rightEyeOpen) / 2f
+        when (livenessState) {
+            LivenessState.WAITING_FOR_OPEN_EYES -> {
+                if (eyeOpenScore >= EYE_OPEN_THRESHOLD) {
+                    livenessState = LivenessState.WAITING_FOR_CLOSED_EYES
+                }
+                emitDetection(Detection.PerformLiveness, currentTime)
+                return false
+            }
+
+            LivenessState.WAITING_FOR_CLOSED_EYES -> {
+                if (eyeOpenScore <= EYE_CLOSED_THRESHOLD) {
+                    livenessState = LivenessState.WAITING_FOR_REOPENED_EYES
+                }
+                emitDetection(Detection.PerformLiveness, currentTime)
+                return false
+            }
+
+            LivenessState.WAITING_FOR_REOPENED_EYES -> {
+                if (eyeOpenScore >= EYE_OPEN_THRESHOLD) {
+                    livenessPassed = true
+                    return true
+                }
+                emitDetection(Detection.PerformLiveness, currentTime)
+                return false
+            }
+        }
     }
 
 
@@ -567,6 +633,13 @@ class FaceAnalyzer(
         capturedBitmaps.clear()
         lastFaceCenter = null
         lastCenterUpdateTimeMs = 0L
+        resetLivenessState()
+    }
+
+    private fun resetLivenessState() {
+        livenessState = LivenessState.WAITING_FOR_OPEN_EYES
+        livenessStartTimeMs = null
+        livenessPassed = false
     }
 
     private fun emitDetection(feedback: Detection, nowMs: Long) {
@@ -588,4 +661,10 @@ class FaceAnalyzer(
         val translationX: Float,
         val translationY: Float
     )
+
+    private enum class LivenessState {
+        WAITING_FOR_OPEN_EYES,
+        WAITING_FOR_CLOSED_EYES,
+        WAITING_FOR_REOPENED_EYES
+    }
 }
