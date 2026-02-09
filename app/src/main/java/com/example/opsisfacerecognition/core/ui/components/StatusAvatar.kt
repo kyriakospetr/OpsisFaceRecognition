@@ -1,4 +1,4 @@
-package com.example.opsisfacerecognition.core.components
+package com.example.opsisfacerecognition.core.ui.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background

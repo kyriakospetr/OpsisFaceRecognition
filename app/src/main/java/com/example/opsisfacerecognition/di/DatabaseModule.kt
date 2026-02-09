@@ -3,7 +3,7 @@ package com.example.opsisfacerecognition.di
 import android.content.Context
 import androidx.room.Room
 import com.example.opsisfacerecognition.data.local.AppDatabase
-import com.example.opsisfacerecognition.data.storage.UserDao
+import com.example.opsisfacerecognition.data.local.dao.UserDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
