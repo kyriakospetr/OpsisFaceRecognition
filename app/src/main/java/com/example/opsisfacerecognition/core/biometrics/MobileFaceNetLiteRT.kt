@@ -15,13 +15,11 @@ import javax.inject.Inject
 class MobileFaceNetLiteRT @Inject constructor(
     @ApplicationContext context: Context
 ) : AutoCloseable {
-
     private val model: CompiledModel = CompiledModel.create(
         context.assets,
         "mobilefacenet.tflite",
         CompiledModel.Options(Accelerator.CPU)
     )
-
     private val inputBuffers = model.createInputBuffers()
     private val outputBuffers = model.createOutputBuffers()
 
@@ -30,7 +28,6 @@ class MobileFaceNetLiteRT @Inject constructor(
         .add(ResizeOp(112, 112, ResizeOp.ResizeMethod.BILINEAR))
         .add(NormalizeOp(127.5f, 128.0f))
         .build()
-
     fun getEmbedding(faceBitmap: Bitmap): FloatArray {
         val bmp = if (faceBitmap.config == Bitmap.Config.ARGB_8888) faceBitmap
                   else faceBitmap.copy(Bitmap.Config.ARGB_8888, false)
@@ -83,6 +80,7 @@ class MobileFaceNetLiteRT @Inject constructor(
     }
 
     fun cosineSimilarity(a: FloatArray, b: FloatArray): Float {
+        // We use dot because both the embeddings are L2 normalized
         var dot = 0f
         for (i in a.indices) {
             dot += a[i] * b[i]

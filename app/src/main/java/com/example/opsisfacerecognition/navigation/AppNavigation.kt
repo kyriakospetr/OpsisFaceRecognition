@@ -14,13 +14,14 @@ import androidx.navigation.compose.rememberNavController
 import com.example.opsisfacerecognition.R
 import com.example.opsisfacerecognition.core.states.FaceFlowMode
 import com.example.opsisfacerecognition.viewmodel.FaceRecognizerViewModel
-import com.example.opsisfacerecognition.views.EnrollScreen
-import com.example.opsisfacerecognition.views.EnrollSuccessScreen
-import com.example.opsisfacerecognition.views.HomeScreen
-import com.example.opsisfacerecognition.views.PrepScreen
-import com.example.opsisfacerecognition.views.ProcessFailed
-import com.example.opsisfacerecognition.views.ScannerScreen
-import com.example.opsisfacerecognition.views.VerifySuccess
+import com.example.opsisfacerecognition.ui.EnrollScreen
+import com.example.opsisfacerecognition.ui.EnrollSuccessScreen
+import com.example.opsisfacerecognition.ui.HomeScreen
+import com.example.opsisfacerecognition.ui.PrepScreen
+import com.example.opsisfacerecognition.ui.ProcessFailed
+import com.example.opsisfacerecognition.ui.ScannerScreen
+import com.example.opsisfacerecognition.ui.SettingsScreen
+import com.example.opsisfacerecognition.ui.VerifySuccess
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -34,6 +35,9 @@ fun AppNavigation() {
         composable(Routes.HOME) {
             HomeScreen(navController = navController)
         }
+        composable(Routes.SETTINGS) {
+            SettingsScreen(navController = navController)
+        }
 
         composable(Routes.ENROLL_PREP) {
             PrepScreen(
@@ -42,7 +46,7 @@ fun AppNavigation() {
                 subtitle = "Scan your face to add your identity",
                 illustrationRes = R.drawable.face_scan,
                 buttonText = "Begin face scan",
-                tip = "After your initial scan, you can optionally set up mask recognition for seamless access.",
+                tip = "A clear and stable capture improves enrollment quality and verification accuracy.",
                 onGo = Routes.ENROLL_GRAPH,
             )
         }
@@ -61,14 +65,13 @@ fun AppNavigation() {
         // We use navgraph so our viewmodel instance is alive
         // We need the pending user from the face recognizer viewmodel
         // Because we first take the embedding and then we ask for the full name
-        // And second we need to match the masked embedding to the correct user
         navigation(route = Routes.ENROLL_GRAPH, startDestination = Routes.ENROLL_SCAN) {
             composable(
                 route = Routes.ENROLL_SCAN,
                 exitTransition = { fadeOut(animationSpec = tween(300)) },
                 popExitTransition = { fadeOut(animationSpec = tween(300)) }
-            ) {
-                val parentEntry = remember {
+            ) { backStackEntry ->
+                val parentEntry = remember(backStackEntry) {
                     navController.getBackStackEntry(Routes.ENROLL_GRAPH)
                 }
                 val viewModel: FaceRecognizerViewModel = hiltViewModel(parentEntry)
@@ -82,8 +85,8 @@ fun AppNavigation() {
                     viewModel = viewModel
                 )
             }
-            composable(Routes.ENROLL_PROCESSED) {
-                val parentEntry = remember {
+            composable(Routes.ENROLL_PROCESSED) { backStackEntry ->
+                val parentEntry = remember(backStackEntry) {
                     navController.getBackStackEntry(Routes.ENROLL_GRAPH)
                 }
                 val viewModel: FaceRecognizerViewModel = hiltViewModel(parentEntry)
@@ -94,44 +97,24 @@ fun AppNavigation() {
                     viewmodel = viewModel
                 )
             }
-            composable(Routes.ENROLL_SUCCESS) {
-                val parentEntry = remember {
+            composable(Routes.ENROLL_SUCCESS) { backStackEntry ->
+                val parentEntry = remember(backStackEntry) {
                     navController.getBackStackEntry(Routes.ENROLL_GRAPH)
                 }
                 val viewModel: FaceRecognizerViewModel = hiltViewModel(parentEntry)
                 EnrollSuccessScreen(
                     navController = navController,
                     title = "Enrollment Successful",
-                    description = "Your profile has been saved. You can now verify your identity anytime.",
+                    description = "Your profile has been saved successfully. You can now verify your identity at any time.",
                     viewmodel = viewModel
                 )
             }
-            composable(Routes.ENROLL_MASKED_FAILED) {
+            composable(Routes.ENROLL_FAILED) {
                 ProcessFailed(
                     navController = navController,
-                    title = "Not Available Yet",
-                    description = "Coming soon",
+                    title = "Enrollment Failed",
+                    description = "We couldn't complete enrollment. Please ensure your face is clearly visible and try again.",
                     onGoToRoute = Routes.HOME
-                )
-            }
-
-            composable(
-                route = Routes.ENROLL_MASKED_SCAN,
-                exitTransition = { fadeOut(animationSpec = tween(300)) },
-                popExitTransition = { fadeOut(animationSpec = tween(300)) }
-            ) {
-                val parentEntry = remember {
-                    navController.getBackStackEntry(Routes.ENROLL_GRAPH)
-                }
-                val viewModel: FaceRecognizerViewModel = hiltViewModel(parentEntry)
-                ScannerScreen(
-                    navController = navController,
-                    title = "Mask Face Enrollment",
-                    subTitle = "Please wear your mask and align your face within the guide. We’ll capture the scan when it’s stable.",
-                    popUpToRoute = Routes.ENROLL_GRAPH,
-                    backRoute = Routes.ENROLL_SUCCESS,
-                    mode = FaceFlowMode.ENROLL_MASKED,
-                    viewModel = viewModel
                 )
             }
         }
@@ -141,8 +124,8 @@ fun AppNavigation() {
                 Routes.VERIFY_SCAN,
                 exitTransition = { fadeOut(animationSpec = tween(300)) },
                 popExitTransition = { fadeOut(animationSpec = tween(300)) }
-            ) {
-                val parentEntry = remember {
+            ) { backStackEntry ->
+                val parentEntry = remember(backStackEntry) {
                     navController.getBackStackEntry(Routes.VERIFY_GRAPH)
                 }
                 val viewModel: FaceRecognizerViewModel = hiltViewModel(parentEntry)
@@ -156,15 +139,15 @@ fun AppNavigation() {
                     viewModel = viewModel
                 )
             }
-            composable(Routes.VERIFY_SUCCESS) {
-                val parentEntry = remember {
+            composable(Routes.VERIFY_SUCCESS) { backStackEntry ->
+                val parentEntry = remember(backStackEntry) {
                     navController.getBackStackEntry(Routes.VERIFY_GRAPH)
                 }
                 val viewModel: FaceRecognizerViewModel = hiltViewModel(parentEntry)
                 VerifySuccess(
                     navController = navController,
                     title = "Identity Verified",
-                    description = "Your identity has been successfully verified. You can now continue securely.",
+                    description = "Your identity has been successfully verified.",
                     viewmodel = viewModel
                 )
             }

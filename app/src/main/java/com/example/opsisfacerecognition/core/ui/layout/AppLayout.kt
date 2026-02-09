@@ -1,4 +1,4 @@
-package com.example.opsisfacerecognition.core.layout
+package com.example.opsisfacerecognition.core.ui.layout
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.dp
