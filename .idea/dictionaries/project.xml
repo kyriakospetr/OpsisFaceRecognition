@@ -5,10 +5,12 @@
       <w>bboxes</w>
       <w>endum</w>
       <w>facenet</w>
+      <w>grayscaled</w>
       <w>mobilefacenet</w>
       <w>navgraph</w>
       <w>nhwc</w>
       <w>opsis</w>
+      <w>runcatching</w>
       <w>strictuml</w>
       <w>tflite</w>
     </words>

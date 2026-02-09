@@ -10,7 +10,6 @@ import com.example.opsisfacerecognition.domain.usecase.ComputeEmbeddingUseCase
 import com.example.opsisfacerecognition.domain.usecase.EnrollUserUseCase
 import com.example.opsisfacerecognition.domain.usecase.FindUserByFullNameUseCase
 import com.example.opsisfacerecognition.domain.usecase.VerifyUserUseCase
-import com.google.mlkit.vision.face.Face
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,21 +31,23 @@ class FaceRecognizerViewModel @Inject constructor(
     private val _pendingUser = MutableStateFlow<User?>(null)
     val pendingUser = _pendingUser.asStateFlow()
 
-    // We get the faces from our FaceDetector
-    // We handle different states
-    fun onFacesDetected(faces: List<Face>) {
-        when {
-            faces.isEmpty() -> {
-                _uiState.value = FaceUiState.Capture.Scanning
-            }
-            faces.size > 1 -> {
-                _uiState.value = FaceUiState.Capture.MultipleFacesDetected
-            }
-            else -> {
-                _uiState.value = FaceUiState.Capture.DetectedSuccessfully
-            }
-        }
+    fun onDetectionFeedback(d: FaceUiState.Detection) {
+        if (shouldIgnoreDetectionFeedback(_uiState.value)) return
+        _uiState.value = d
     }
+
+    private fun shouldIgnoreDetectionFeedback(currentState: FaceUiState): Boolean =
+        when (currentState) {
+            FaceUiState.Loading,
+            FaceUiState.Enroll.CaptureProcessed,
+            FaceUiState.Enroll.Completed,
+            FaceUiState.Enroll.FullNameConflict,
+            FaceUiState.Verify.Verified,
+            FaceUiState.Verify.VerificationFailed,
+            is FaceUiState.Error -> true
+            else -> false
+        }
+
     fun onImagesCaptured(bitmaps: List<Bitmap>, mode: FaceFlowMode) {
         viewModelScope.launch(Dispatchers.Default) {
             try {
@@ -69,7 +70,7 @@ class FaceRecognizerViewModel @Inject constructor(
                     FaceFlowMode.ENROLL -> {
                         withContext(Dispatchers.Main) {
                             _pendingUser.value = newUser
-                            _uiState.value = FaceUiState.Enroll.Processed
+                            _uiState.value = FaceUiState.Enroll.CaptureProcessed
                         }
                     }
                     FaceFlowMode.VERIFY -> {
@@ -77,10 +78,6 @@ class FaceRecognizerViewModel @Inject constructor(
                             _pendingUser.value = newUser
                         }
                         verifyUser()
-                    }
-                    FaceFlowMode.ENROLL_MASKED -> {
-                        withContext(Dispatchers.Main) {
-                        }
                     }
                 }
             } catch (e: Exception) {
@@ -102,7 +99,7 @@ class FaceRecognizerViewModel @Inject constructor(
             try {
                 val conflictUser = findUserByFullNameUseCase(fullName)
                 if(conflictUser != null) {
-                    _uiState.value = FaceUiState.Enroll.ConflictFullName
+                    _uiState.value = FaceUiState.Enroll.FullNameConflict
                     return@launch
                 }
                 val updatedUser = currentUser.copy(fullName = fullName)
@@ -139,7 +136,7 @@ class FaceRecognizerViewModel @Inject constructor(
                 _uiState.value = if (user != null) {
                     FaceUiState.Verify.Verified
                 } else {
-                    FaceUiState.Verify.NotVerified
+                    FaceUiState.Verify.VerificationFailed
                 }
             } catch (e: Exception) {
                 _uiState.value = FaceUiState.Error("Failed to get user: ${e.message}")

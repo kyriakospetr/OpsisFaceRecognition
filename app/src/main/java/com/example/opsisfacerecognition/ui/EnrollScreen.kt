@@ -1,4 +1,4 @@
-package com.example.opsisfacerecognition.views
+package com.example.opsisfacerecognition.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -42,8 +42,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.opsisfacerecognition.app.ui.theme.bodyFontFamily
 import com.example.opsisfacerecognition.app.ui.theme.displayFontFamily
-import com.example.opsisfacerecognition.core.components.StatusAvatar
-import com.example.opsisfacerecognition.core.layout.AppScreenContainer
+import com.example.opsisfacerecognition.core.ui.components.StatusAvatar
+import com.example.opsisfacerecognition.core.ui.layout.AppScreenContainer
 import com.example.opsisfacerecognition.core.states.FaceUiState
 import com.example.opsisfacerecognition.navigation.Routes
 import com.example.opsisfacerecognition.viewmodel.FaceRecognizerViewModel
@@ -189,13 +189,14 @@ fun EnrollScreen(
                 }
 
                 // We display the error if there is a fullName Conflict
-                if (uiState is FaceUiState.Enroll.ConflictFullName) {
+                if (uiState is FaceUiState.Enroll.FullNameConflict) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "That name is already in use. Please choose a different one.",
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
                 Spacer(modifier = Modifier.weight(0.72f))

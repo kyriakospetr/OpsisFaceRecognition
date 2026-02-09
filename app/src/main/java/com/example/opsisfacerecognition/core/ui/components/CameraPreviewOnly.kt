@@ -1,4 +1,4 @@
-package com.example.opsisfacerecognition.core.components
+package com.example.opsisfacerecognition.core.ui.components
 
 import android.os.Build
 import androidx.annotation.RequiresApi

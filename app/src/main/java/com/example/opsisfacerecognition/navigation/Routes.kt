@@ -12,8 +12,7 @@ object Routes {
     const val ENROLL_SCAN = "enroll_scan"
     const val ENROLL_PROCESSED = "enroll_processed"
     const val ENROLL_SUCCESS = "enroll_success"
-    const val ENROLL_MASKED_FAILED = "enroll_masked_failed"
-    const val ENROLL_MASKED_SCAN = "enroll_masked_scan"
+    const val ENROLL_FAILED = "enroll_failed"
 
     const val VERIFY_GRAPH = "verify_graph"
     const val VERIFY_SCAN = "verify_scan"
