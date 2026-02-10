@@ -138,16 +138,7 @@ There is no full test coverage yet for biometrics and UI flows.
 
 ## Important Notes
 
-- This project is for educational/experimental use.
 - It includes pseudo-liveness using a blink challenge, but this is not a production-grade anti-spoofing solution.
 - `verification_threshold` is currently `0.82` (in `VerifyUserUseCase`), based on initial self-tests, and needs further testing/calibration with more users.
 - Existing plaintext DB is reset once when encrypted DB is initialized (no migration strategy).
 
-## Extra Material
-
-Sequence diagrams are available in:
-
-- `design/uml/sequence/registration-standard.puml`
-- `design/uml/sequence/registration-name-conflict.puml`
-- `design/uml/sequence/verify.puml`
-- `design/uml/sequence/delete-face.puml`
