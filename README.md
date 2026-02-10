@@ -1,5 +1,13 @@
 # Opsis Face Recognition
 
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.2.0-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![Jetpack Compose BOM](https://img.shields.io/badge/Jetpack%20Compose%20BOM-2026.01.01-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+[![ML Kit Face Detection](https://img.shields.io/badge/ML%20Kit%20Face%20Detection-16.1.7-34A853?logo=google&logoColor=white)](https://developers.google.com/ml-kit/vision/face-detection)
+[![MobileFaceNet (TFLite)](https://img.shields.io/badge/MobileFaceNet-TFLite-FF6F00?logo=tensorflow&logoColor=white)](https://github.com/sirius-ai/MobileFaceNet_TF)
+[![CameraX](https://img.shields.io/badge/CameraX-1.5.3-0F9D58?logo=android&logoColor=white)](https://developer.android.com/training/camerax)
+[![Hilt](https://img.shields.io/badge/Hilt-2.57.2-4285F4?logo=google&logoColor=white)](https://dagger.dev/hilt/)
+[![Room DB](https://img.shields.io/badge/Room-2.8.4-3DDC84?logo=android&logoColor=white)](https://developer.android.com/jetpack/androidx/releases/room)
+
 An Android face recognition app built with Jetpack Compose.  
 This is a student project that demonstrates a complete flow for:
 
@@ -69,6 +77,7 @@ Before accepting samples, the analyzer checks:
 - near-straight orientation (yaw/pitch/roll up to ~12 degrees)
 - stability for ~600ms
 - sufficient eye distance
+- pseudo-liveness blink challenge (open -> closed -> open eyes)
 - anti-blur check (Laplacian variance)
 
 Then it captures 4 samples and computes average embedding + L2 normalization.
@@ -124,7 +133,7 @@ There is no full test coverage yet for biometrics and UI flows.
 ## Important Notes
 
 - This project is for educational/experimental use.
-- It does not include liveness detection.
+- It includes pseudo-liveness using a blink challenge, but this is not a production-grade anti-spoofing solution.
 - `verification_threshold` is currently `0.82` (in `VerifyUserUseCase`), based on initial self-tests, and needs further testing/calibration with more users.
 - Existing plaintext DB is reset once when encrypted DB is initialized (no migration strategy).
 
