@@ -15,11 +15,11 @@ DB --> Settings : Face list
 alt Delete single face
 Settings -> DB : Delete face template (Face i)
 DB --> Settings : Deleted
-Settings --> User : Update list / show confirmation
+Settings --> User : Update list
 else Erase all data
 Settings -> DB : Delete all face templates
 DB --> Settings : Deleted
-Settings --> User : Show "All data erased" / empty list
+Settings --> User : Show "No faces"/ empty list
 end
 
 User -> Settings : Close (X)

@@ -1,0 +1,50 @@
+@startuml
+title Face Verification (on-device)
+
+actor User
+participant "Home\nScreen" as Home
+participant "Preparation\nScreen" as Prep
+participant "Scanning\nScreen" as Scan
+participant "Camera" as Camera
+participant "Face\nAnalyzer" as Analyzer
+participant "MobileFaceNet" as FaceNet
+participant "Room\nDB" as DB
+
+User -> Home : Opens application
+Home -> Prep : Verify identity
+
+note right of Prep
+Guidelines:
+- Uncovered face
+- Good lighting
+end note
+
+Prep -> Scan : Start verification
+
+Scan -> Camera : Start capture
+
+loop While scanning (Until 4 frames of the same person are captured with good quality)
+Camera --> Scan : Frame
+Scan -> Analyzer : Detect + quality + blink liveness
+Analyzer --> Scan : Feedback state
+end
+
+Scan -> Camera : Stop capture
+
+Scan -> FaceNet : Generate embedding
+FaceNet --> Scan : Live face vector
+
+Scan -> DB : Load enrolled users
+DB --> Scan : Stored templates
+loop For each user
+Scan -> FaceNet : Cosine similarity
+FaceNet --> Scan : Score
+end
+DB --> Scan : Best score + matched user
+
+alt Best score >= threshold (0.82)
+Scan --> User : Show verified with full name
+else Best score < threshold
+Scan --> User : Show Scan failed (Try again)
+end
+@enduml

@@ -113,7 +113,7 @@ fun HomeScreen(
                 onClick = { navController.navigate(Routes.ENROLL_PREP) }
             ) {
                 Text(
-                    "Start face scan",
+                    "Add your face",
                     fontFamily = displayFontFamily,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(8.dp)

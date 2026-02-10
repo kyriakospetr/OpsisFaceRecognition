@@ -16,6 +16,13 @@ This is a student project that demonstrates a complete flow for:
 - Local embedding storage
 - User management from settings
 
+<p float="left">
+  <img src="docs/screenshots/home.png" width="200"  alt=""/>
+  <img src="docs/screenshots/prep_enroll.png" width="200"  alt=""/>
+  <img src="docs/screenshots/prep_verify.png" width="200"  alt=""/>
+  <img src="docs/screenshots/settings.png" width="200"  alt=""/>
+</p>
+
 ## What The App Does
 
 The app opens the camera, detects a face with ML Kit, and when conditions are good it:
@@ -142,6 +149,6 @@ There is no full test coverage yet for biometrics and UI flows.
 Sequence diagrams are available in:
 
 - `design/uml/sequence/registration-standard.puml`
-- `design/uml/sequence/registration-with-mask.puml`
+- `design/uml/sequence/registration-name-conflict.puml`
 - `design/uml/sequence/verify.puml`
 - `design/uml/sequence/delete-face.puml`
