@@ -8,8 +8,7 @@
 [![Hilt](https://img.shields.io/badge/Hilt-2.57.2-4285F4?logo=google&logoColor=white)](https://dagger.dev/hilt/)
 [![Room DB](https://img.shields.io/badge/Room-2.8.4-3DDC84?logo=android&logoColor=white)](https://developer.android.com/jetpack/androidx/releases/room)
 
-An Android face recognition app built with Jetpack Compose.  
-This is a student project that demonstrates a complete flow for:
+An Android face recognition app built with Jetpack Compose.
 
 - Face enrollment
 - Face verification
