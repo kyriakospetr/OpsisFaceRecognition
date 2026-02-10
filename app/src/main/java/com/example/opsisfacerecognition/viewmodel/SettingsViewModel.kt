@@ -2,24 +2,18 @@ package com.example.opsisfacerecognition.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.opsisfacerecognition.data.entity.UserEntity
+import com.example.opsisfacerecognition.core.states.SettingsUiState
 import com.example.opsisfacerecognition.domain.usecase.DeleteAllUsersUseCase
 import com.example.opsisfacerecognition.domain.usecase.DeleteUserByLocalIdUseCase
 import com.example.opsisfacerecognition.domain.usecase.ListUsersUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-data class SettingsUiState(
-    val users: List<UserEntity> = emptyList(),
-    val isLoading: Boolean = false,
-    val errorMessage: String? = null
-)
+import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -40,7 +34,7 @@ class SettingsViewModel @Inject constructor(
     fun loadUsers() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            // instead of try-catch we use run catching
+            // Instead of try-catch we use run catching
             runCatching {
                 withContext(Dispatchers.IO) {
                     listUsersUseCase()

@@ -44,9 +44,9 @@ fun AppNavigation() {
                 navController = navController,
                 title = "Get Ready for Face Scan",
                 subtitle = "Scan your face to add your identity",
-                illustrationRes = R.drawable.face_scan,
+                illustrationRes = R.drawable.face_scanning,
                 buttonText = "Begin face scan",
-                tip = "A clear and stable capture improves enrollment quality and verification accuracy.",
+                tip = "After enrollment, you'll be asked if you also want to register with a mask.",
                 onGo = Routes.ENROLL_GRAPH,
             )
         }
@@ -104,8 +104,6 @@ fun AppNavigation() {
                 val viewModel: FaceRecognizerViewModel = hiltViewModel(parentEntry)
                 EnrollSuccessScreen(
                     navController = navController,
-                    title = "Enrollment Successful",
-                    description = "Your profile has been saved successfully. You can now verify your identity at any time.",
                     viewmodel = viewModel
                 )
             }
@@ -147,7 +145,7 @@ fun AppNavigation() {
                 VerifySuccess(
                     navController = navController,
                     title = "Identity Verified",
-                    description = "Your identity has been successfully verified.",
+                    description = "Everything looks good. Continue to the home screen.",
                     viewmodel = viewModel
                 )
             }

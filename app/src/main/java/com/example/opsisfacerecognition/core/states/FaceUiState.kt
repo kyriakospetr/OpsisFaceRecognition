@@ -2,20 +2,15 @@ package com.example.opsisfacerecognition.core.states
 
 sealed interface FaceUiState {
     data object Idle : FaceUiState
-
     data object Loading : FaceUiState
-
     sealed interface Detection : FaceUiState {
         data object FaceDetected : Detection
-
         data object NoFace : Detection
         data object MultipleFaces : Detection
-
         data object MoveCloser : Detection
         data object HoldStill : Detection
         data object LookStraight : Detection
         data object CenterFace : Detection
-
         data object ImproveFocus : Detection
         data object PerformLiveness : Detection
         data object LivenessFailed : Detection
@@ -31,6 +26,5 @@ sealed interface FaceUiState {
         data object Verified: Verify
         data object VerificationFailed : Verify
     }
-
     data class Error(val message: String) : FaceUiState
 }

@@ -2,11 +2,10 @@ package com.example.opsisfacerecognition.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,14 +27,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.opsisfacerecognition.R
-import com.example.opsisfacerecognition.core.ui.layout.AppScreenContainer
-import com.example.opsisfacerecognition.core.ui.layout.LocalAppInsets
 import com.example.opsisfacerecognition.app.ui.theme.bodyFontFamily
 import com.example.opsisfacerecognition.app.ui.theme.displayFontFamily
+import com.example.opsisfacerecognition.core.ui.layout.AppScreenContainer
 import com.example.opsisfacerecognition.navigation.Routes
 
 
@@ -48,7 +45,14 @@ fun HomeScreen(
         modifier = Modifier.fillMaxWidth(),
         topBar = {
             TopAppBar(
-                title = { },
+                title = {
+                    Text(
+                        text = "Opsis Face Recognition",
+                        fontFamily = displayFontFamily,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                },
                 actions = {
                     IconButton(
                         onClick = { navController.navigate(Routes.SETTINGS) }
@@ -66,39 +70,14 @@ fun HomeScreen(
                 ),
                 modifier = Modifier.padding(horizontal = 10.dp)
             )
-        },
-        bottomBar = {
-            Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = LocalAppInsets.current.horizontal, vertical = 10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Opsis Face Recognition 2026",
-                    fontFamily = bodyFontFamily,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .alpha(0.7f)
-                )
-            }
         }
     ) {
         innerPadding ->
         AppScreenContainer(
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
         ) {
-                Text(
-                    text = "Opsis Face Recognition",
-                    fontFamily = displayFontFamily,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-            Spacer(modifier = Modifier.height(12.dp))
             // Subtitle
             Text(
                 text = "Fast  Reliable and secure face recognition.\nStart scanning to confirm your identity\nwith confidence.",
@@ -108,15 +87,17 @@ fun HomeScreen(
                 modifier = Modifier.alpha(0.7f)
             )
 
+            Spacer(Modifier.height(32.dp))
+
             // Face SVG
             Image(
                 painter = painterResource(R.drawable.face),
                 contentDescription = "Opsis Face Recognition Logo",
                 modifier = Modifier
-                    .fillMaxWidth(0.95f)
-                    .height(350.dp)
+                    .fillMaxWidth(0.85f)
+                    .height(300.dp)
                     .align(Alignment.CenterHorizontally),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Fit
             )
 
 
@@ -156,6 +137,8 @@ fun HomeScreen(
                     modifier = Modifier.padding(8.dp)
                 )
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }

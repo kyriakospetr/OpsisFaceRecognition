@@ -19,6 +19,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,11 +41,10 @@ import com.example.opsisfacerecognition.viewmodel.FaceRecognizerViewModel
 @Composable
 fun EnrollSuccessScreen(
     navController: NavController,
-    title: String,
-    description: String,
     viewmodel: FaceRecognizerViewModel = hiltViewModel()
 
 ) {
+    val pendingUser by viewmodel.pendingUser.collectAsState()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -78,7 +79,7 @@ fun EnrollSuccessScreen(
 
                 // Title
                 Text(
-                    text = title,
+                    text = "You are all set ${pendingUser?.fullName}",
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = displayFontFamily,
                     style = MaterialTheme.typography.titleLarge,
@@ -91,7 +92,7 @@ fun EnrollSuccessScreen(
 
                 // Subtitle
                 Text(
-                    text = description,
+                    text = "You can now scan with a mask too. Your profile is saved and ready for verification.",
                     style = MaterialTheme.typography.bodyMedium,
                     fontFamily = bodyFontFamily,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

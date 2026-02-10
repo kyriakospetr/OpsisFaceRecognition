@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -116,7 +117,7 @@ fun PrepScreen(
                 color = MaterialTheme.colorScheme.onBackground
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
                 text = subtitle,
@@ -126,7 +127,7 @@ fun PrepScreen(
                 modifier = Modifier.alpha(0.7f)
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(32.dp))
 
             Image(
                 painter = painterResource(illustrationRes),
@@ -197,13 +198,16 @@ private fun RequirementItem(icon: ImageVector, label: String) {
             imageVector = icon,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.size(22.dp)
+            modifier = Modifier
+                .size(22.dp)
+                .alpha(0.7f),
         )
         Spacer(Modifier.width(8.dp))
         Text(
             text = label,
             fontFamily = bodyFontFamily,
-            style = MaterialTheme.typography.labelLarge
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.alpha(0.7f)
         )
     }
 }

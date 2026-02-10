@@ -346,12 +346,14 @@ fun StatusBanner(
     val targetBackgroundColor = when (tone) {
         MessageTone.Neutral -> MaterialTheme.colorScheme.surface
         MessageTone.Success -> MaterialTheme.colorScheme.primaryContainer
+        MessageTone.Attention -> MaterialTheme.colorScheme.tertiaryContainer
         MessageTone.Error -> MaterialTheme.colorScheme.errorContainer
     }
 
     val targetContentColor = when (tone) {
         MessageTone.Neutral -> MaterialTheme.colorScheme.onSurface
         MessageTone.Success -> MaterialTheme.colorScheme.onPrimary
+        MessageTone.Attention -> MaterialTheme.colorScheme.onTertiaryContainer
         MessageTone.Error -> MaterialTheme.colorScheme.onErrorContainer
     }
 
@@ -369,6 +371,7 @@ fun StatusBanner(
     val icon = when (tone) {
         MessageTone.Neutral -> Icons.Outlined.Info
         MessageTone.Success -> Icons.Outlined.CheckCircle
+        MessageTone.Attention -> Icons.Outlined.Warning
         MessageTone.Error -> Icons.Outlined.Warning
     }
 
@@ -408,26 +411,27 @@ fun StatusBanner(
 // UI Helpers
 data class ScannerStatus(val message: String, val tone: MessageTone)
 enum class MessageTone {
-    Neutral, Success, Error
+    Neutral, Success, Attention, Error
 }
 private fun getScannerStatus(uiState: FaceUiState): ScannerStatus =
     when (uiState) {
-        FaceUiState.Idle -> ScannerStatus("Initializing camera...", MessageTone.Neutral)
+        FaceUiState.Idle -> ScannerStatus("Starting camera...", MessageTone.Neutral)
         FaceUiState.Loading -> ScannerStatus("Processing...", MessageTone.Neutral)
-        Detection.FaceDetected -> ScannerStatus("Face detected! Hold still...", MessageTone.Success)
-        Detection.NoFace -> ScannerStatus("Position your face inside the oval.", MessageTone.Neutral)
-        Detection.MultipleFaces -> ScannerStatus("Multiple faces detected. Use only one.", MessageTone.Error)
-        Detection.CenterFace -> ScannerStatus("Center your face inside the oval.", MessageTone.Neutral)
-        Detection.LookStraight -> ScannerStatus("Look straight at the camera.", MessageTone.Neutral)
-        Detection.MoveCloser -> ScannerStatus("Move a bit closer to the camera.", MessageTone.Neutral)
-        Detection.HoldStill -> ScannerStatus("Hold still.", MessageTone.Neutral)
-        Detection.ImproveFocus -> ScannerStatus("Image is blurry. Improve focus and try again.", MessageTone.Error)
-        Detection.PerformLiveness -> ScannerStatus("Liveness check: blink naturally.", MessageTone.Neutral)
-        Detection.LivenessFailed -> ScannerStatus("Liveness check failed. Please try again.", MessageTone.Error)
-        FaceUiState.Enroll.CaptureProcessed -> ScannerStatus("Capture complete. Preparing enrollment...", MessageTone.Neutral)
-        FaceUiState.Enroll.FullNameConflict -> ScannerStatus("This name is already in use.", MessageTone.Error)
-        FaceUiState.Enroll.Completed -> ScannerStatus("Enrollment completed.", MessageTone.Success)
-        is FaceUiState.Verify.Verified -> ScannerStatus("Verified", MessageTone.Success)
-        FaceUiState.Verify.VerificationFailed -> ScannerStatus("Not verified", MessageTone.Error)
-        is FaceUiState.Error -> ScannerStatus(uiState.message, MessageTone.Error)
+
+        Detection.FaceDetected,
+        Detection.HoldStill -> ScannerStatus("Face detected. Hold still.", MessageTone.Success)
+        Detection.PerformLiveness -> ScannerStatus("Blink naturally to continue.", MessageTone.Attention)
+
+        Detection.NoFace,
+        Detection.CenterFace,
+        Detection.LookStraight,
+        Detection.MoveCloser -> ScannerStatus("Center your face in the oval.", MessageTone.Neutral)
+
+        Detection.MultipleFaces -> ScannerStatus("One face only.", MessageTone.Error)
+        Detection.ImproveFocus -> ScannerStatus("Image is blurry. Try again.", MessageTone.Error)
+        Detection.LivenessFailed -> ScannerStatus("Try again.", MessageTone.Error)
+
+        FaceUiState.Enroll.FullNameConflict -> ScannerStatus("Name already exists.", MessageTone.Error)
+        is FaceUiState.Error -> ScannerStatus("Something went wrong. Try again.", MessageTone.Error)
+        else -> ScannerStatus("Processing...", MessageTone.Neutral)
     }
