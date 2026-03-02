@@ -1,6 +1,6 @@
 package com.example.opsisfacerecognition.domain.repository
 
-import com.example.opsisfacerecognition.data.entity.UserEntity
+import com.example.opsisfacerecognition.data.local.entity.UserEntity
 import com.example.opsisfacerecognition.domain.model.User
 
 interface UserRepository {

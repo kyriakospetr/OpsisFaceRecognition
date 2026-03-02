@@ -1,4 +1,4 @@
-package com.example.opsisfacerecognition.core.biometrics.analysis
+package com.example.opsisfacerecognition.core.biometrics
 
 import android.graphics.PointF
 import androidx.compose.ui.geometry.Offset

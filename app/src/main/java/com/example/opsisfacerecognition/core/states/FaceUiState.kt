@@ -12,8 +12,7 @@ sealed interface FaceUiState {
         data object LookStraight : Detection
         data object CenterFace : Detection
         data object ImproveFocus : Detection
-        data object PerformLiveness : Detection
-        data object LivenessFailed : Detection
+        data object EyesNotOpen : Detection
     }
 
     sealed interface Enroll : FaceUiState {

@@ -11,7 +11,9 @@ import com.google.ai.edge.litert.CompiledModel
 import org.tensorflow.lite.DataType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 class MobileFaceNetLiteRT @Inject constructor(
     @ApplicationContext context: Context
 ) : AutoCloseable {
@@ -51,12 +53,9 @@ class MobileFaceNetLiteRT @Inject constructor(
         }
 
         val norm = kotlin.math.sqrt(sum)
-        if (norm < 1e-10f) return vector
+        if (norm < 1e-10f) return vector.copyOf()
 
-        for (i in vector.indices) {
-            vector[i] /= norm
-        }
-        return vector
+        return FloatArray(vector.size) { i -> vector[i] / norm }
     }
 
     override fun close() {

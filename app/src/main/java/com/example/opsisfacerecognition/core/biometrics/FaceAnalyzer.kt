@@ -7,11 +7,6 @@ import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.compose.ui.geometry.Offset
-import com.example.opsisfacerecognition.core.biometrics.analysis.FaceCaptureSessionState
-import com.example.opsisfacerecognition.core.biometrics.analysis.FaceValidation
-import com.example.opsisfacerecognition.core.biometrics.analysis.FaceSampleCollector
-import com.example.opsisfacerecognition.core.biometrics.analysis.DetectionFeedbackEmitter
-import com.example.opsisfacerecognition.core.biometrics.analysis.BlinkLiveness
 import com.example.opsisfacerecognition.core.states.FaceUiState.Detection
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
@@ -26,7 +21,7 @@ class FaceAnalyzer(
     private val screenHeight: Float,
     private val onDetectionFeedback: (Detection) -> Unit,
     private val onImagesCaptured: (List<Bitmap>) -> Unit
-) : ImageAnalysis.Analyzer {
+) : ImageAnalysis.Analyzer, AutoCloseable {
 
     companion object {
         private const val POSITION_TOLERANCE = 0.5f // How much we tolerate the user to be away from oval's center
@@ -43,11 +38,7 @@ class FaceAnalyzer(
         private const val SAME_FEEDBACK_COOLDOWN_MS = 400L // Cooldown for repeated identical feedback
         private const val FEEDBACK_SWITCH_COOLDOWN_MS = 140L // Minimum spacing between different feedback states
 
-        // Liveness checks based on blink challenge
-        // User has to blink once (open -> closed -> open) before capture starts
-        private const val LIVENESS_TIMEOUT_MS = 6000L
         private const val EYE_OPEN_THRESHOLD = 0.70f
-        private const val EYE_CLOSED_THRESHOLD = 0.35f
 
         // For our facenet Model
         // They are used to create the bitmap
@@ -88,13 +79,6 @@ class FaceAnalyzer(
         maxRotationDegrees = MAX_ROTATION_DEGREES,
         minEyeDistancePx = MIN_EYE_DISTANCE_PX,
         maxCenterSpeedPxPerSecond = MAX_CENTER_SPEED_PX_PER_SECOND
-    )
-
-    // Blink challenge state machine
-    private val blinkLiveness = BlinkLiveness(
-        timeoutMs = LIVENESS_TIMEOUT_MS,
-        eyeOpenThreshold = EYE_OPEN_THRESHOLD,
-        eyeClosedThreshold = EYE_CLOSED_THRESHOLD
     )
 
     // Frame -> aligned face crop -> blur check -> sample buffering
@@ -260,21 +244,12 @@ class FaceAnalyzer(
             return
         }
 
-        when (blinkLiveness.evaluate(face, currentTime, session)) {
-            BlinkLiveness.Result.InProgress -> {
-                emitDetection(Detection.PerformLiveness, currentTime)
-                return
-            }
-
-            BlinkLiveness.Result.Failed -> {
-                emitDetection(Detection.LivenessFailed, currentTime)
-                session.stabilityStartTimeMs = null
-                return
-            }
-
-            BlinkLiveness.Result.Passed -> {
-                // Continue to sample pipeline
-            }
+        val leftEyeOpen = face.leftEyeOpenProbability
+        val rightEyeOpen = face.rightEyeOpenProbability
+        if (leftEyeOpen == null || rightEyeOpen == null ||
+            leftEyeOpen < EYE_OPEN_THRESHOLD || rightEyeOpen < EYE_OPEN_THRESHOLD) {
+            emitDetection(Detection.EyesNotOpen, currentTime)
+            return
         }
 
         emitDetection(Detection.FaceDetected, currentTime)
@@ -324,7 +299,6 @@ class FaceAnalyzer(
             session.stabilityStartTimeMs = null
             session.lastSampleTimeMs = 0L
             session.capturedBitmaps.clear()
-            session.resetLivenessState()
             return false
         }
 
@@ -359,4 +333,29 @@ class FaceAnalyzer(
         val translationX: Float,
         val translationY: Float
     )
+
+    override fun close() {
+        faceDetector.close()
+    }
+
+    private class DetectionFeedbackEmitter(
+        private val sameFeedbackCooldownMs: Long,
+        private val feedbackSwitchCooldownMs: Long
+    ) {
+        private var lastFeedback: Detection? = null
+        private var lastFeedbackTimeMs: Long = 0L
+
+        fun emit(feedback: Detection, nowMs: Long, emitter: (Detection) -> Unit) {
+            val previousFeedback = lastFeedback
+            if (previousFeedback != null) {
+                val elapsedMs = nowMs - lastFeedbackTimeMs
+                if (feedback == previousFeedback && elapsedMs < sameFeedbackCooldownMs) return
+                if (feedback != previousFeedback && elapsedMs < feedbackSwitchCooldownMs) return
+            }
+
+            lastFeedback = feedback
+            lastFeedbackTimeMs = nowMs
+            emitter(feedback)
+        }
+    }
 }

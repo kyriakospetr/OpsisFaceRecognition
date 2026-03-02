@@ -1,18 +1,15 @@
-package com.example.opsisfacerecognition.core.biometrics.analysis
+package com.example.opsisfacerecognition.core.biometrics
 
 import android.graphics.Bitmap
 import android.graphics.PointF
 
-data class FaceCaptureSessionState(
+class FaceCaptureSessionState(
     var currentTrackingId: Int? = null,
     var stabilityStartTimeMs: Long? = null,
     var lastSampleTimeMs: Long = 0L,
     var lastFaceCenter: PointF? = null,
     var lastCenterUpdateTimeMs: Long = 0L,
     var isCaptureComplete: Boolean = false,
-    var livenessStage: LivenessStage = LivenessStage.WAITING_FOR_OPEN_EYES,
-    var livenessStartTimeMs: Long? = null,
-    var livenessPassed: Boolean = false,
     val capturedBitmaps: MutableList<Bitmap> = mutableListOf()
 ) {
 
@@ -22,21 +19,9 @@ data class FaceCaptureSessionState(
         currentTrackingId = null
         stabilityStartTimeMs = null
         lastSampleTimeMs = 0L
+        capturedBitmaps.forEach { it.recycle() }
         capturedBitmaps.clear()
         lastFaceCenter = null
         lastCenterUpdateTimeMs = 0L
-        resetLivenessState()
     }
-
-    fun resetLivenessState() {
-        livenessStage = LivenessStage.WAITING_FOR_OPEN_EYES
-        livenessStartTimeMs = null
-        livenessPassed = false
-    }
-}
-
-enum class LivenessStage {
-    WAITING_FOR_OPEN_EYES,
-    WAITING_FOR_CLOSED_EYES,
-    WAITING_FOR_REOPENED_EYES
 }

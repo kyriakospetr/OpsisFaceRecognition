@@ -1,6 +1,6 @@
 package com.example.opsisfacerecognition.domain.usecase
 
-import com.example.opsisfacerecognition.data.entity.toUser
+import com.example.opsisfacerecognition.data.local.entity.toUser
 import com.example.opsisfacerecognition.domain.model.User
 import com.example.opsisfacerecognition.domain.repository.UserRepository
 import javax.inject.Inject

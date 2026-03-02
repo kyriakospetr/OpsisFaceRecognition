@@ -51,6 +51,13 @@ fun CameraPreviewWithAnalysis(
         }
     }
 
+    // Close the analyzer (and its faceDetector) when the composable disposes or the analyzer instance changes
+    DisposableEffect(analyzer) {
+        onDispose {
+            analyzer.close()
+        }
+    }
+
     // The LaunchedEffect block runs only when analyzer, lifecycleOwner change.
     // This prevents the camera from re-binding unnecessary when other UI elements like text update.
     LaunchedEffect(analyzer, lifecycleOwner) {

@@ -1,6 +1,6 @@
 package com.example.opsisfacerecognition.core.states
 
-import com.example.opsisfacerecognition.data.entity.UserEntity
+import com.example.opsisfacerecognition.data.local.entity.UserEntity
 
 data class SettingsUiState(
     val users: List<UserEntity> = emptyList(),

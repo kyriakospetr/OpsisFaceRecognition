@@ -1,4 +1,4 @@
-package com.example.opsisfacerecognition.core.biometrics.analysis
+package com.example.opsisfacerecognition.core.biometrics
 
 import android.graphics.Bitmap
 import android.graphics.Canvas

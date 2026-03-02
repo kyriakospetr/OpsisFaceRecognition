@@ -1,7 +1,7 @@
 package com.example.opsisfacerecognition.data.repository
 
-import com.example.opsisfacerecognition.data.entity.UserEntity
-import com.example.opsisfacerecognition.data.entity.toEntity
+import com.example.opsisfacerecognition.data.local.entity.UserEntity
+import com.example.opsisfacerecognition.data.local.entity.toEntity
 import com.example.opsisfacerecognition.data.local.dao.UserDao
 import com.example.opsisfacerecognition.domain.model.User
 import com.example.opsisfacerecognition.domain.repository.UserRepository
