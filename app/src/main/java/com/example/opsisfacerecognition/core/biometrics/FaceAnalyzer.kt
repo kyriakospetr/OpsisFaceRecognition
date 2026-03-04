@@ -15,6 +15,7 @@ import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import androidx.core.graphics.scale
+import android.graphics.Rect
 
 class FaceAnalyzer(
     private val ovalCenter: Offset,
@@ -24,7 +25,8 @@ class FaceAnalyzer(
     private val screenHeight: Float,
     private val onDetectionFeedback: (Detection) -> Unit,
     private val onImagesCaptured: (List<Bitmap>) -> Unit,
-    private val faceAttributeClassifier: FaceAttributeClassifier
+    private val faceAttributeClassifier: FaceAttributeClassifier,
+    private val livenessDetector: LivenessDetector
 ) : ImageAnalysis.Analyzer, AutoCloseable {
 
     companion object {
@@ -74,6 +76,7 @@ class FaceAnalyzer(
 
     private var lastAttributeCheckTimeMs = 0L
     private var lastAttributeResult = FaceAttributeResult(hasGlasses = false, hasHat = false)
+    private var lastLivenessResult = LivenessDetector.LivenessResult(isLive = true, score = 1f)
 
     // Emits UI feedback with cooldowns so messages do not flicker frame-by-frame
     private val detectionFeedbackEmitter = DetectionFeedbackEmitter(
@@ -194,6 +197,7 @@ class FaceAnalyzer(
     }
 
     private fun isFacePositionAndPoseValid(face: Face, mapping: CoordinateMapping, now: Long): Boolean {
+        // We check if the person's face is inside the oval and doesn't look sideways etc..
         val screenPosition = calculateScreenPosition(face, mapping)
 
         val isFaceCentered = faceValidation.isFaceInsideOval(
@@ -263,11 +267,14 @@ class FaceAnalyzer(
 
         if (currentTime - lastAttributeCheckTimeMs >= ATTRIBUTE_CHECK_INTERVAL_MS) {
             lastAttributeCheckTimeMs = currentTime
-            val faceCrop = extractFaceCropForClassifier(imageProxy, face, rotationDegrees)
-            if (faceCrop != null) {
-                lastAttributeResult = faceAttributeClassifier.classify(faceCrop)
-                faceCrop.recycle()
+            val upright = extractUprightBitmap(imageProxy, rotationDegrees)
+            val attrCrop = cropAndScaleForAttribute(upright, face.boundingBox)
+            if (attrCrop != null) {
+                lastAttributeResult = faceAttributeClassifier.classify(attrCrop)
+                attrCrop.recycle()
             }
+            lastLivenessResult = livenessDetector.check(upright, face.boundingBox)
+            upright.recycle()
         }
 
         if (lastAttributeResult.hasGlasses) {
@@ -276,6 +283,10 @@ class FaceAnalyzer(
         }
         if (lastAttributeResult.hasHat) {
             emitDetection(Detection.WearingHat, currentTime)
+            return
+        }
+        if (!lastLivenessResult.isLive) {
+            emitDetection(Detection.SpoofDetected, currentTime)
             return
         }
 
@@ -352,41 +363,37 @@ class FaceAnalyzer(
         return currentTime - session.stabilityStartTimeMs!! >= STABILITY_DURATION_MS
     }
 
-    private fun extractFaceCropForClassifier(imageProxy: ImageProxy, face: Face, rotationDegrees: Int): Bitmap? {
+    private fun extractUprightBitmap(imageProxy: ImageProxy, rotationDegrees: Int): Bitmap {
+        // Rotates the raw camera frame to upright orientation.
+        // CameraX delivers frames rotated (e.g. 90°) — this corrects the orientation
+        // so the face appears straight. If no rotation is needed (0°), returns the original bitmap.
         val src = imageProxy.toBitmap()
-        val upright = if (rotationDegrees % 360 == 0) {
-            src
-        } else {
-            val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
-            val srcBounds = RectF(0f, 0f, src.width.toFloat(), src.height.toFloat())
-            val dstBounds = RectF(srcBounds)
-            matrix.mapRect(dstBounds)
-            matrix.postTranslate(-dstBounds.left, -dstBounds.top)
-            Bitmap.createBitmap(src, 0, 0, src.width, src.height, matrix, true)
-        }
+        if (rotationDegrees % 360 == 0) return src
+        val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+        val srcBounds = RectF(0f, 0f, src.width.toFloat(), src.height.toFloat())
+        val dstBounds = RectF(srcBounds)
+        matrix.mapRect(dstBounds)
+        matrix.postTranslate(-dstBounds.left, -dstBounds.top)
+        val upright = Bitmap.createBitmap(src, 0, 0, src.width, src.height, matrix, true)
+        src.recycle()
+        return upright
+    }
 
-        val box = face.boundingBox
+    private fun cropAndScaleForAttribute(upright: Bitmap, box: Rect): Bitmap? {
+        // Crops the face region from the upright bitmap using the ML Kit bounding box,
+        // then scales it to the required input size for the FaceAttributeClassifier (96x96).
+        // Bounds are clamped to avoid going outside the image dimensions.
         val left = box.left.coerceAtLeast(0)
         val top = box.top.coerceAtLeast(0)
         val right = box.right.coerceAtMost(upright.width)
         val bottom = box.bottom.coerceAtMost(upright.height)
-        val cropWidth = right - left
-        val cropHeight = bottom - top
-
-        if (cropWidth <= 0 || cropHeight <= 0) {
-            if (upright !== src) upright.recycle()
-            src.recycle()
-            return null
-        }
-
-        val cropped = Bitmap.createBitmap(upright, left, top, cropWidth, cropHeight)
-        if (upright !== src) upright.recycle()
-        src.recycle()
-
+        val w = right - left
+        val h = bottom - top
+        if (w <= 0 || h <= 0) return null
+        val cropped = Bitmap.createBitmap(upright, left, top, w, h)
         val inputSize = FaceAttributeClassifier.MODEL_INPUT_SIZE
         val scaled = cropped.scale(inputSize, inputSize)
         if (scaled !== cropped) cropped.recycle()
-
         return scaled
     }
 

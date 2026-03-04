@@ -49,6 +49,7 @@ android {
 
     androidResources {
         noCompress += "tflite"
+        noCompress += "onnx"
     }
     kotlinOptions {
         freeCompilerArgs = listOf("-XXLanguage:+PropertyParamAnnotationDefaultTargetMode")
@@ -99,6 +100,9 @@ dependencies {
     implementation(libs.room.ktx)
     implementation(libs.sqlcipher.android)
     ksp(libs.room.compiler)
+
+    // Onnx
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.24.2")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

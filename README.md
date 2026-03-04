@@ -5,6 +5,7 @@
 [![ML Kit Face Detection](https://img.shields.io/badge/ML%20Kit%20Face%20Detection-16.1.7-34A853?logo=google&logoColor=white)](https://developers.google.com/ml-kit/vision/face-detection)
 [![MobileFaceNet (TFLite)](https://img.shields.io/badge/MobileFaceNet-TFLite-FF6F00?logo=tensorflow&logoColor=white)](https://github.com/sirius-ai/MobileFaceNet_TF)
 [![MobileNetV2 (TFLite)](https://img.shields.io/badge/MobileNetV2-TFLite-FF6F00?logo=tensorflow&logoColor=white)](https://www.tensorflow.org/api_docs/python/tf/keras/applications/MobileNetV2)
+[![SilentFace (ONNX)](https://img.shields.io/badge/SilentFace-ONNX-005CED?logo=onnx&logoColor=white)](https://github.com/AliaksandrSiarohin/first-order-model)
 [![CameraX](https://img.shields.io/badge/CameraX-1.5.3-0F9D58?logo=android&logoColor=white)](https://developer.android.com/training/camerax)
 [![Hilt](https://img.shields.io/badge/Hilt-2.57.2-4285F4?logo=google&logoColor=white)](https://dagger.dev/hilt/)
 [![Room DB](https://img.shields.io/badge/Room-2.8.4-3DDC84?logo=android&logoColor=white)](https://developer.android.com/jetpack/androidx/releases/room)
@@ -16,6 +17,7 @@ An Android face recognition app built with Jetpack Compose.
 - Local embedding storage
 - User management from settings
 - On-device face attribute detection (glasses, hat)
+- Passive liveness detection (anti-spoofing)
 
 <p float="left">
   <img src="docs/screenshots/home.png" width="200"  alt=""/>
@@ -44,6 +46,7 @@ In verification mode, it:
 - CameraX (`camera-core`, `camera-camera2`, `camera-lifecycle`, `camera-view`)
 - Google ML Kit Face Detection
 - LiteRT + TensorFlow Lite Support API (MobileFaceNet inference, face attribute classification)
+- ONNX Runtime for Android (passive liveness inference)
 - Room Database
 - SQLCipher (encrypted Room database)
 - Hilt (DI)
@@ -63,6 +66,7 @@ Main code points:
 - `app/src/main/java/com/example/opsisfacerecognition/core/biometrics/FaceAnalyzer.kt`
 - `app/src/main/java/com/example/opsisfacerecognition/core/biometrics/MobileFaceNetLiteRT.kt`
 - `app/src/main/java/com/example/opsisfacerecognition/core/biometrics/FaceAttributeClassifier.kt`
+- `app/src/main/java/com/example/opsisfacerecognition/core/biometrics/LivenessDetector.kt`
 - `app/src/main/java/com/example/opsisfacerecognition/viewmodel/FaceRecognizerViewModel.kt`
 - `app/src/main/java/com/example/opsisfacerecognition/viewmodel/SettingsViewModel.kt`
 
@@ -88,6 +92,7 @@ Before accepting samples, the analyzer checks:
 - sufficient eye distance
 - both eyes open
 - no eyeglasses or hat detected (via on-device `face_attributes.tflite` model)
+- passive liveness check (via on-device SilentFace ONNX models)
 - anti-blur check (Laplacian variance)
 
 Then it captures 4 samples and computes average embedding + L2 normalization.
@@ -105,6 +110,18 @@ ML Kit does not provide eyeglasses or hat detection. To enforce bare-face captur
 - **Inference**: runs every 500ms on the face bounding box crop; result is cached and applied every frame to block capture
 
 Training notebook: `ml/train_face_attributes.ipynb` (designed for Google Colab).
+
+## Passive Liveness Detection
+
+To prevent spoofing attacks (printed photos, screens, masks), a passive liveness check runs on every candidate frame before samples are accepted. No user action is required.
+
+- **Models**: two SilentFace ONNX models (`silentface40.onnx`, `silentface27.onnx`) run in parallel — one on a wider crop (scale 4.0×) and one on a tighter crop (scale 2.7×) of the face bounding box
+- **Input**: 80×80 RGB crop, raw pixel values [0, 255], CHW layout
+- **Output**: softmax over two classes (spoof / live); index 1 is the live score
+- **Decision**: the two live scores are averaged and compared against a threshold (`0.972`); both crops must agree the face is real
+- **Runtime**: ONNX Runtime for Android (`onnxruntime-android:1.24.2`)
+- **Inference**: runs every 500ms together with face attribute classification; result is cached and applied every frame to block capture
+
 
 ## Data Storage
 
@@ -156,7 +173,5 @@ There is no full test coverage yet for biometrics and UI flows.
 
 ## Important Notes
 
-- It includes pseudo-liveness using a blink challenge, but this is not a production-grade anti-spoofing solution.
 - `verification_threshold` is currently `0.82` (in `VerifyUserUseCase`), based on initial self-tests, and needs further testing/calibration with more users.
 - Existing plaintext DB is reset once when encrypted DB is initialized (no migration strategy).
-

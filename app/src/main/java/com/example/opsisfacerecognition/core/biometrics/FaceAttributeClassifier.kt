@@ -2,7 +2,6 @@ package com.example.opsisfacerecognition.core.biometrics
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.util.Log
 import com.google.ai.edge.litert.Accelerator
 import com.google.ai.edge.litert.CompiledModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -26,24 +25,17 @@ class FaceAttributeClassifier @Inject constructor(
         private const val GLASSES_THRESHOLD = 0.6f
         private const val HAT_THRESHOLD = 0.6f
         const val MODEL_INPUT_SIZE = 96 // Facenet Model is trained on 96x96
-        private const val TAG = "FaceAttributeClassifier"
     }
 
-    // We load the model from our assets
-    // If no model is found we skip the checks
-    private val model: CompiledModel? = runCatching {
-        CompiledModel.create(
-            context.assets,
-            "face_attributes.tflite",
-            CompiledModel.Options(Accelerator.CPU)
-        )
-    }.onFailure { e ->
-        Log.w(TAG, "face_attributes.tflite not loaded — attribute detection disabled: ${e.message}")
-    }.getOrNull()
+    private val model: CompiledModel = CompiledModel.create(
+        context.assets,
+        "face_attributes.tflite",
+        CompiledModel.Options(Accelerator.CPU)
+    )
 
     // Buffers for model's input/output (performance)
-    private val inputBuffers = model?.createInputBuffers()
-    private val outputBuffers = model?.createOutputBuffers()
+    private val inputBuffers = model.createInputBuffers()
+    private val outputBuffers = model.createOutputBuffers()
 
     private val imageProcessor = ImageProcessor.Builder()
         .add(ResizeOp(MODEL_INPUT_SIZE, MODEL_INPUT_SIZE, ResizeOp.ResizeMethod.BILINEAR))
@@ -51,10 +43,9 @@ class FaceAttributeClassifier @Inject constructor(
         .build()
 
     fun classify(faceBitmap: Bitmap): FaceAttributeResult {
-        // If model didn't load, we return false, so we don't block the user
-        val m = model ?: return FaceAttributeResult(hasGlasses = false, hasHat = false)
-        val ib = inputBuffers ?: return FaceAttributeResult(hasGlasses = false, hasHat = false)
-        val ob = outputBuffers ?: return FaceAttributeResult(hasGlasses = false, hasHat = false)
+        val m = model
+        val ib = inputBuffers
+        val ob = outputBuffers
 
         // Verify bitmap is ARGB_8888 format
         val bmp = if (faceBitmap.config == Bitmap.Config.ARGB_8888) faceBitmap
@@ -83,6 +74,6 @@ class FaceAttributeClassifier @Inject constructor(
     }
 
     override fun close() {
-        model?.close()
+        model.close()
     }
 }

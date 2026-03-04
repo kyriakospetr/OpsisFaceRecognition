@@ -10,6 +10,7 @@ import com.example.opsisfacerecognition.domain.usecase.ComputeEmbeddingUseCase
 import com.example.opsisfacerecognition.domain.usecase.EnrollUserUseCase
 import com.example.opsisfacerecognition.domain.usecase.FindUserByFullNameUseCase
 import com.example.opsisfacerecognition.core.biometrics.FaceAttributeClassifier
+import com.example.opsisfacerecognition.core.biometrics.LivenessDetector
 import com.example.opsisfacerecognition.domain.usecase.VerifyUserUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +26,8 @@ class FaceRecognizerViewModel @Inject constructor(
     private val findUserByFullNameUseCase: FindUserByFullNameUseCase,
     private val enrollUserUseCase: EnrollUserUseCase,
     private val verifyUserUseCase: VerifyUserUseCase,
-    val faceAttributeClassifier: FaceAttributeClassifier
+    val faceAttributeClassifier: FaceAttributeClassifier,
+    val livenessDetector: LivenessDetector
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<FaceUiState>(FaceUiState.Idle)
     val uiState = _uiState.asStateFlow()

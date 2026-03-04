@@ -59,6 +59,7 @@ import com.example.opsisfacerecognition.app.ui.theme.bodyFontFamily
 import com.example.opsisfacerecognition.app.ui.theme.displayFontFamily
 import com.example.opsisfacerecognition.core.biometrics.FaceAnalyzer
 import com.example.opsisfacerecognition.core.biometrics.FaceAttributeClassifier
+import com.example.opsisfacerecognition.core.biometrics.LivenessDetector
 import com.example.opsisfacerecognition.core.ui.components.CameraPreviewOnly
 import com.example.opsisfacerecognition.core.ui.components.CameraPreviewWithAnalysis
 import com.example.opsisfacerecognition.core.ui.components.OvalOverlay
@@ -191,6 +192,7 @@ fun ScannerScreen(
                 onDetectionFeedback = { feedback -> viewModel.onDetectionFeedback(feedback) },
                 onImagesCaptured = { bitmaps -> viewModel.onImagesCaptured(bitmaps, mode) },
                 faceAttributeClassifier = viewModel.faceAttributeClassifier,
+                livenessDetector = viewModel.livenessDetector,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -204,6 +206,7 @@ fun FaceScannerCameraZone(
     onDetectionFeedback: (Detection) -> Unit,
     onImagesCaptured: (List<Bitmap>) -> Unit,
     faceAttributeClassifier: FaceAttributeClassifier,
+    livenessDetector: LivenessDetector,
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
@@ -269,7 +272,8 @@ fun FaceScannerCameraZone(
                         screenHeight = previewSize.height.toFloat(),
                         onDetectionFeedback = onDetectionFeedback,
                         onImagesCaptured = onImagesCaptured,
-                        faceAttributeClassifier = faceAttributeClassifier
+                        faceAttributeClassifier = faceAttributeClassifier,
+                        livenessDetector = livenessDetector
                     )
                 }
 
@@ -427,6 +431,7 @@ private fun getScannerStatus(uiState: FaceUiState): ScannerStatus =
         Detection.EyesNotOpen -> ScannerStatus("Please open both eyes.", MessageTone.Attention)
         Detection.WearingGlasses -> ScannerStatus("Please remove glasses to continue.", MessageTone.Attention)
         Detection.WearingHat -> ScannerStatus("Please remove hat to continue.", MessageTone.Attention)
+        Detection.SpoofDetected -> ScannerStatus("Liveness check failed. Use your real face.", MessageTone.Attention)
 
         Detection.NoFace,
         Detection.CenterFace,
