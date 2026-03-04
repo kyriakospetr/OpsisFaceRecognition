@@ -4,6 +4,7 @@
 [![Jetpack Compose BOM](https://img.shields.io/badge/Jetpack%20Compose%20BOM-2026.01.01-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![ML Kit Face Detection](https://img.shields.io/badge/ML%20Kit%20Face%20Detection-16.1.7-34A853?logo=google&logoColor=white)](https://developers.google.com/ml-kit/vision/face-detection)
 [![MobileFaceNet (TFLite)](https://img.shields.io/badge/MobileFaceNet-TFLite-FF6F00?logo=tensorflow&logoColor=white)](https://github.com/sirius-ai/MobileFaceNet_TF)
+[![MobileNetV2 (TFLite)](https://img.shields.io/badge/MobileNetV2-TFLite-FF6F00?logo=tensorflow&logoColor=white)](https://www.tensorflow.org/api_docs/python/tf/keras/applications/MobileNetV2)
 [![CameraX](https://img.shields.io/badge/CameraX-1.5.3-0F9D58?logo=android&logoColor=white)](https://developer.android.com/training/camerax)
 [![Hilt](https://img.shields.io/badge/Hilt-2.57.2-4285F4?logo=google&logoColor=white)](https://dagger.dev/hilt/)
 [![Room DB](https://img.shields.io/badge/Room-2.8.4-3DDC84?logo=android&logoColor=white)](https://developer.android.com/jetpack/androidx/releases/room)
@@ -14,6 +15,7 @@ An Android face recognition app built with Jetpack Compose.
 - Face verification
 - Local embedding storage
 - User management from settings
+- On-device face attribute detection (glasses, hat)
 
 <p float="left">
   <img src="docs/screenshots/home.png" width="200"  alt=""/>
@@ -41,7 +43,7 @@ In verification mode, it:
 - Kotlin + Jetpack Compose (Material 3)
 - CameraX (`camera-core`, `camera-camera2`, `camera-lifecycle`, `camera-view`)
 - Google ML Kit Face Detection
-- LiteRT + TensorFlow Lite Support API (MobileFaceNet inference)
+- LiteRT + TensorFlow Lite Support API (MobileFaceNet inference, face attribute classification)
 - Room Database
 - SQLCipher (encrypted Room database)
 - Hilt (DI)
@@ -60,6 +62,7 @@ Main code points:
 
 - `app/src/main/java/com/example/opsisfacerecognition/core/biometrics/FaceAnalyzer.kt`
 - `app/src/main/java/com/example/opsisfacerecognition/core/biometrics/MobileFaceNetLiteRT.kt`
+- `app/src/main/java/com/example/opsisfacerecognition/core/biometrics/FaceAttributeClassifier.kt`
 - `app/src/main/java/com/example/opsisfacerecognition/viewmodel/FaceRecognizerViewModel.kt`
 - `app/src/main/java/com/example/opsisfacerecognition/viewmodel/SettingsViewModel.kt`
 
@@ -83,10 +86,25 @@ Before accepting samples, the analyzer checks:
 - near-straight orientation (yaw/pitch/roll up to ~12 degrees)
 - stability for ~600ms
 - sufficient eye distance
-- pseudo-liveness blink challenge (open -> closed -> open eyes)
+- both eyes open
+- no eyeglasses or hat detected (via on-device `face_attributes.tflite` model)
 - anti-blur check (Laplacian variance)
 
 Then it captures 4 samples and computes average embedding + L2 normalization.
+
+## Face Attribute Classification
+
+ML Kit does not provide eyeglasses or hat detection. To enforce bare-face capture, a custom binary classifier was trained and deployed on-device.
+
+- **Dataset**: [CelebA](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html) (~202,000 aligned face images, 40 binary attributes)
+- **Attributes used**: `Eyeglasses`, `Wearing_Hat`
+- **Architecture**: MobileNetV2 (ImageNet weights, frozen) + GlobalAveragePooling + Dense(128, ReLU) + Dropout(0.3) + Dense(2, Sigmoid)
+- **Input**: 96×96 RGB face crop, normalized to [0, 1]
+- **Output**: `[glasses_prob, hat_prob]` — independent sigmoid probabilities
+- **Export**: converted to TFLite (`face_attributes.tflite`) and bundled in `assets/`
+- **Inference**: runs every 500ms on the face bounding box crop; result is cached and applied every frame to block capture
+
+Training notebook: `ml/train_face_attributes.ipynb` (designed for Google Colab).
 
 ## Data Storage
 

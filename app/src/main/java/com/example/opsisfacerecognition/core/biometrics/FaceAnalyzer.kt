@@ -1,6 +1,8 @@
 package com.example.opsisfacerecognition.core.biometrics
 
 import android.graphics.Bitmap
+import android.graphics.Matrix
+import android.graphics.RectF
 import android.os.SystemClock
 import androidx.annotation.OptIn
 import androidx.camera.core.ExperimentalGetImage
@@ -12,6 +14,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
+import androidx.core.graphics.scale
 
 class FaceAnalyzer(
     private val ovalCenter: Offset,
@@ -20,7 +23,8 @@ class FaceAnalyzer(
     private val screenWidth: Float,
     private val screenHeight: Float,
     private val onDetectionFeedback: (Detection) -> Unit,
-    private val onImagesCaptured: (List<Bitmap>) -> Unit
+    private val onImagesCaptured: (List<Bitmap>) -> Unit,
+    private val faceAttributeClassifier: FaceAttributeClassifier
 ) : ImageAnalysis.Analyzer, AutoCloseable {
 
     companion object {
@@ -39,6 +43,8 @@ class FaceAnalyzer(
         private const val FEEDBACK_SWITCH_COOLDOWN_MS = 140L // Minimum spacing between different feedback states
 
         private const val EYE_OPEN_THRESHOLD = 0.70f
+
+        private const val ATTRIBUTE_CHECK_INTERVAL_MS = 500L
 
         // For our facenet Model
         // They are used to create the bitmap
@@ -65,6 +71,9 @@ class FaceAnalyzer(
 
     // Mutable state for the active capture session (tracking, liveness, captured images)
     private val session = FaceCaptureSessionState()
+
+    private var lastAttributeCheckTimeMs = 0L
+    private var lastAttributeResult = FaceAttributeResult(hasGlasses = false, hasHat = false)
 
     // Emits UI feedback with cooldowns so messages do not flicker frame-by-frame
     private val detectionFeedbackEmitter = DetectionFeedbackEmitter(
@@ -252,6 +261,24 @@ class FaceAnalyzer(
             return
         }
 
+        if (currentTime - lastAttributeCheckTimeMs >= ATTRIBUTE_CHECK_INTERVAL_MS) {
+            lastAttributeCheckTimeMs = currentTime
+            val faceCrop = extractFaceCropForClassifier(imageProxy, face, rotationDegrees)
+            if (faceCrop != null) {
+                lastAttributeResult = faceAttributeClassifier.classify(faceCrop)
+                faceCrop.recycle()
+            }
+        }
+
+        if (lastAttributeResult.hasGlasses) {
+            emitDetection(Detection.WearingGlasses, currentTime)
+            return
+        }
+        if (lastAttributeResult.hasHat) {
+            emitDetection(Detection.WearingHat, currentTime)
+            return
+        }
+
         emitDetection(Detection.FaceDetected, currentTime)
 
         // We pause a bit after a successful capture
@@ -322,6 +349,44 @@ class FaceAnalyzer(
         }
 
         return currentTime - session.stabilityStartTimeMs!! >= STABILITY_DURATION_MS
+    }
+
+    private fun extractFaceCropForClassifier(imageProxy: ImageProxy, face: Face, rotationDegrees: Int): Bitmap? {
+        val src = imageProxy.toBitmap()
+        val upright = if (rotationDegrees % 360 == 0) {
+            src
+        } else {
+            val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+            val srcBounds = RectF(0f, 0f, src.width.toFloat(), src.height.toFloat())
+            val dstBounds = RectF(srcBounds)
+            matrix.mapRect(dstBounds)
+            matrix.postTranslate(-dstBounds.left, -dstBounds.top)
+            Bitmap.createBitmap(src, 0, 0, src.width, src.height, matrix, true)
+        }
+
+        val box = face.boundingBox
+        val left = box.left.coerceAtLeast(0)
+        val top = box.top.coerceAtLeast(0)
+        val right = box.right.coerceAtMost(upright.width)
+        val bottom = box.bottom.coerceAtMost(upright.height)
+        val cropWidth = right - left
+        val cropHeight = bottom - top
+
+        if (cropWidth <= 0 || cropHeight <= 0) {
+            if (upright !== src) upright.recycle()
+            src.recycle()
+            return null
+        }
+
+        val cropped = Bitmap.createBitmap(upright, left, top, cropWidth, cropHeight)
+        if (upright !== src) upright.recycle()
+        src.recycle()
+
+        val inputSize = FaceAttributeClassifier.MODEL_INPUT_SIZE
+        val scaled = cropped.scale(inputSize, inputSize)
+        if (scaled !== cropped) cropped.recycle()
+
+        return scaled
     }
 
     private fun emitDetection(feedback: Detection, nowMs: Long) {

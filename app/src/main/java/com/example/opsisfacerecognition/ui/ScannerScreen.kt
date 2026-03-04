@@ -58,6 +58,7 @@ import androidx.navigation.NavController
 import com.example.opsisfacerecognition.app.ui.theme.bodyFontFamily
 import com.example.opsisfacerecognition.app.ui.theme.displayFontFamily
 import com.example.opsisfacerecognition.core.biometrics.FaceAnalyzer
+import com.example.opsisfacerecognition.core.biometrics.FaceAttributeClassifier
 import com.example.opsisfacerecognition.core.ui.components.CameraPreviewOnly
 import com.example.opsisfacerecognition.core.ui.components.CameraPreviewWithAnalysis
 import com.example.opsisfacerecognition.core.ui.components.OvalOverlay
@@ -189,6 +190,7 @@ fun ScannerScreen(
                 uiState = uiState,
                 onDetectionFeedback = { feedback -> viewModel.onDetectionFeedback(feedback) },
                 onImagesCaptured = { bitmaps -> viewModel.onImagesCaptured(bitmaps, mode) },
+                faceAttributeClassifier = viewModel.faceAttributeClassifier,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -201,6 +203,7 @@ fun FaceScannerCameraZone(
     uiState: FaceUiState,
     onDetectionFeedback: (Detection) -> Unit,
     onImagesCaptured: (List<Bitmap>) -> Unit,
+    faceAttributeClassifier: FaceAttributeClassifier,
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
@@ -265,7 +268,8 @@ fun FaceScannerCameraZone(
                         screenWidth = previewSize.width.toFloat(),
                         screenHeight = previewSize.height.toFloat(),
                         onDetectionFeedback = onDetectionFeedback,
-                        onImagesCaptured = onImagesCaptured
+                        onImagesCaptured = onImagesCaptured,
+                        faceAttributeClassifier = faceAttributeClassifier
                     )
                 }
 
@@ -421,6 +425,8 @@ private fun getScannerStatus(uiState: FaceUiState): ScannerStatus =
         Detection.FaceDetected,
         Detection.HoldStill -> ScannerStatus("Face detected. Hold still.", MessageTone.Success)
         Detection.EyesNotOpen -> ScannerStatus("Please open both eyes.", MessageTone.Attention)
+        Detection.WearingGlasses -> ScannerStatus("Please remove glasses to continue.", MessageTone.Attention)
+        Detection.WearingHat -> ScannerStatus("Please remove hat to continue.", MessageTone.Attention)
 
         Detection.NoFace,
         Detection.CenterFace,

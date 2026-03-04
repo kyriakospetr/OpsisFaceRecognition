@@ -13,6 +13,8 @@ sealed interface FaceUiState {
         data object CenterFace : Detection
         data object ImproveFocus : Detection
         data object EyesNotOpen : Detection
+        data object WearingGlasses : Detection
+        data object WearingHat : Detection
     }
 
     sealed interface Enroll : FaceUiState {
