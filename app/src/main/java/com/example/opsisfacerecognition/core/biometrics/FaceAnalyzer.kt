@@ -40,7 +40,7 @@ class FaceAnalyzer(
         private const val MIN_EYE_DISTANCE_FOR_ALIGNMENT = 10f // The minimum distance where we perform face alignment
 
         private const val SAME_FEEDBACK_COOLDOWN_MS = 400L // Cooldown for repeated identical feedback
-        private const val FEEDBACK_SWITCH_COOLDOWN_MS = 140L // Minimum spacing between different feedback states
+        private const val FEEDBACK_SWITCH_COOLDOWN_MS = 400L // Minimum spacing between different feedback states
 
         private const val EYE_OPEN_THRESHOLD = 0.70f
 
@@ -295,6 +295,7 @@ class FaceAnalyzer(
             )
         ) {
             FaceSampleCollector.CaptureResult.Blurry -> {
+                session.lastSampleTimeMs = currentTime
                 emitDetection(Detection.ImproveFocus, currentTime)
             }
 
