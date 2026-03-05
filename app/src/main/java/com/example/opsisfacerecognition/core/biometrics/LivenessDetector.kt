@@ -33,7 +33,12 @@ class LivenessDetector @Inject constructor(
     // Load both ONNX models from assets at initialization — throws if any model is missing
     private val sessions: List<OrtSession> = MODEL_FILES.map { name ->
         val bytes = context.assets.open(name).readBytes()
-        env.createSession(bytes, OrtSession.SessionOptions())
+        val opts = OrtSession.SessionOptions().apply {
+            setIntraOpNumThreads(2)
+            // Use NNAPI hardware acceleration when available, fall back to CPU silently
+            runCatching { addNnapi() }
+        }
+        env.createSession(bytes, opts)
     }
 
     // Runs both models and averages their live scores

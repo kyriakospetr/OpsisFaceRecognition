@@ -265,27 +265,34 @@ class FaceAnalyzer(
             return
         }
 
-        if (currentTime - lastAttributeCheckTimeMs >= ATTRIBUTE_CHECK_INTERVAL_MS) {
+        val needsAttributeCheck = currentTime - lastAttributeCheckTimeMs >= ATTRIBUTE_CHECK_INTERVAL_MS
+        val needsSample = sampleCollector.shouldCaptureSample(currentTime, session)
+
+        // Decode and rotate the frame at most once, shared between attribute check and sample capture
+        val upright = if (needsAttributeCheck || needsSample) extractUprightBitmap(imageProxy, rotationDegrees) else null
+
+        if (needsAttributeCheck && upright != null) {
             lastAttributeCheckTimeMs = currentTime
-            val upright = extractUprightBitmap(imageProxy, rotationDegrees)
             val attrCrop = cropAndScaleForAttribute(upright, face.boundingBox)
             if (attrCrop != null) {
                 lastAttributeResult = faceAttributeClassifier.classify(attrCrop)
                 attrCrop.recycle()
             }
             lastLivenessResult = livenessDetector.check(upright, face.boundingBox)
-            upright.recycle()
         }
 
         if (lastAttributeResult.hasGlasses) {
+            upright?.recycle()
             emitDetection(Detection.WearingGlasses, currentTime)
             return
         }
         if (lastAttributeResult.hasHat) {
+            upright?.recycle()
             emitDetection(Detection.WearingHat, currentTime)
             return
         }
         if (!lastLivenessResult.isLive) {
+            upright?.recycle()
             emitDetection(Detection.SpoofDetected, currentTime)
             return
         }
@@ -294,13 +301,15 @@ class FaceAnalyzer(
 
         // We pause a bit after a successful capture
         // We do not immediately start capturing 4 pictures
-        if (!sampleCollector.shouldCaptureSample(currentTime, session)) return
+        if (!needsSample || upright == null) {
+            upright?.recycle()
+            return
+        }
 
         when (
             val result = sampleCollector.captureSample(
-                imageProxy = imageProxy,
+                uprightBitmap = upright,
                 face = face,
-                rotationDegrees = rotationDegrees,
                 currentTime = currentTime,
                 session = session
             )
@@ -319,6 +328,7 @@ class FaceAnalyzer(
                 // No-op
             }
         }
+        upright.recycle()
     }
 
     private fun isTrackingIdValid(trackingId: Int?): Boolean {

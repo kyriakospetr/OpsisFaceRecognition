@@ -27,11 +27,11 @@ class FaceAttributeClassifier @Inject constructor(
         const val MODEL_INPUT_SIZE = 96 // Facenet Model is trained on 96x96
     }
 
-    private val model: CompiledModel = CompiledModel.create(
-        context.assets,
-        "face_attributes.tflite",
-        CompiledModel.Options(Accelerator.CPU)
-    )
+    private val model: CompiledModel = runCatching {
+        CompiledModel.create(context.assets, "face_attributes.tflite", CompiledModel.Options(Accelerator.GPU))
+    }.getOrElse {
+        CompiledModel.create(context.assets, "face_attributes.tflite", CompiledModel.Options(Accelerator.CPU))
+    }
 
     // Buffers for model's input/output (performance)
     private val inputBuffers = model.createInputBuffers()

@@ -5,8 +5,6 @@ import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.PointF
-import android.graphics.RectF
-import androidx.camera.core.ImageProxy
 import androidx.core.graphics.createBitmap
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceLandmark
@@ -40,9 +38,9 @@ class FaceSampleCollector(
         return currentTime - session.lastSampleTimeMs >= sampleIntervalMs
     }
 
-    fun captureSample(imageProxy: ImageProxy, face: Face, rotationDegrees: Int, currentTime: Long, session: FaceCaptureSessionState): CaptureResult {
-        // Our bitmap
-        val alignedFaceBitmap = extractAndAlignFace(imageProxy, face, rotationDegrees) ?: return CaptureResult.Skipped
+    fun captureSample(uprightBitmap: Bitmap, face: Face, currentTime: Long, session: FaceCaptureSessionState): CaptureResult {
+        // Align the pre-decoded upright bitmap to produce the face crop
+        val alignedFaceBitmap = alignFaceByEyes(uprightBitmap, face) ?: return CaptureResult.Skipped
 
         // Check for blur
         // We do not accept blurry images as our facenet model will extract unstable embeddings
@@ -65,35 +63,6 @@ class FaceSampleCollector(
         }
 
         return CaptureResult.Added
-    }
-
-    private fun extractAndAlignFace(imageProxy: ImageProxy, face: Face, rotationDegrees: Int): Bitmap? {
-        // Convert ImageProxy to Bitmap
-        val src = imageProxy.toBitmap()
-        val upright = rotateBitmapIfNeeded(src, rotationDegrees)
-
-        val aligned = alignFaceByEyes(upright, face)
-
-        if (upright !== src) upright.recycle()
-        src.recycle()
-        return aligned
-    }
-
-    private fun rotateBitmapIfNeeded(bitmap: Bitmap, rotationDegrees: Int): Bitmap {
-        // The raw camera frame is first rotated to upright orientation and
-        // then geometrically normalized using eye landmarks before embedding extraction
-        if (rotationDegrees % 360 == 0) {
-            return bitmap
-        }
-
-        val rotationMatrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
-        val sourceBounds = RectF(0f, 0f, bitmap.width.toFloat(), bitmap.height.toFloat())
-        val destinationBounds = RectF(sourceBounds)
-
-        rotationMatrix.mapRect(destinationBounds)
-        rotationMatrix.postTranslate(-destinationBounds.left, -destinationBounds.top)
-
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, rotationMatrix, true)
     }
 
     private fun alignFaceByEyes(bitmap: Bitmap, face: Face): Bitmap? {
@@ -176,70 +145,35 @@ class FaceSampleCollector(
     }
 
     private fun calculateBlurVariance(bitmap: Bitmap): Double {
-        val grayscale = convertToGrayscale(bitmap)
-
-        // Calculate if the image is blurry using Laplacian
-        val laplacian = applyLaplacianOperator(grayscale)
-        return calculateVariance(laplacian)
-    }
-
-    private fun convertToGrayscale(bitmap: Bitmap): DoubleArray {
-        // Convert the bitmap to grayscale (black-white)
-        // Because Laplacian works better with grayscale images
         val pixels = IntArray(facePixels)
         bitmap.getPixels(pixels, 0, faceSize, 0, 0, faceSize, faceSize)
 
-        return DoubleArray(facePixels) { index ->
-            val pixel = pixels[index]
-            val red = (pixel shr 16) and 0xFF
-            val green = (pixel shr 8) and 0xFF
-            val blue = pixel and 0xFF
-            0.299 * red + 0.587 * green + 0.114 * blue
-        }
-    }
-
-    private fun applyLaplacianOperator(grayscalePixels: DoubleArray): DoubleArray {
-        val laplacianValues = DoubleArray(facePixels)
-
-        for (y in 1 until faceSize - 1) {
-            for (x in 1 until faceSize - 1) {
-                val centerIndex = y * faceSize + x
-                val centerValue = grayscalePixels[centerIndex]
-
-                val topValue = grayscalePixels[(y - 1) * faceSize + x]
-                val leftValue = grayscalePixels[y * faceSize + (x - 1)]
-                val rightValue = grayscalePixels[y * faceSize + (x + 1)]
-                val bottomValue = grayscalePixels[(y + 1) * faceSize + x]
-
-                laplacianValues[centerIndex] = topValue + leftValue - 4.0 * centerValue + rightValue + bottomValue
-            }
+        // Convert to grayscale
+        val gray = DoubleArray(facePixels) { i ->
+            val px = pixels[i]
+            0.299 * ((px shr 16) and 0xFF) + 0.587 * ((px shr 8) and 0xFF) + 0.114 * (px and 0xFF)
         }
 
-        return laplacianValues
-    }
-
-    private fun calculateVariance(laplacianValues: DoubleArray): Double {
+        // Single-pass Laplacian variance: accumulate sum and sum-of-squares together
+        // variance = E[x²] - E[x]²  avoids a second full loop over laplacian values
         var sum = 0.0
+        var sumSq = 0.0
         var count = 0
 
         for (y in 1 until faceSize - 1) {
             for (x in 1 until faceSize - 1) {
-                sum += laplacianValues[y * faceSize + x]
+                val c = y * faceSize + x
+                val lap = gray[(y - 1) * faceSize + x] + gray[y * faceSize + (x - 1)] -
+                        4.0 * gray[c] +
+                        gray[y * faceSize + (x + 1)] + gray[(y + 1) * faceSize + x]
+                sum += lap
+                sumSq += lap * lap
                 count++
             }
         }
 
-        val mean = sum / count.toDouble()
-
-        var varianceSum = 0.0
-        for (y in 1 until faceSize - 1) {
-            for (x in 1 until faceSize - 1) {
-                val difference = laplacianValues[y * faceSize + x] - mean
-                varianceSum += difference * difference
-            }
-        }
-
-        return varianceSum / count.toDouble()
+        val mean = sum / count
+        return sumSq / count - mean * mean
     }
 
     private data class EyePair(

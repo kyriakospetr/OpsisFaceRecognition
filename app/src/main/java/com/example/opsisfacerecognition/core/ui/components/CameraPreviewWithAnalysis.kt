@@ -74,9 +74,11 @@ fun CameraPreviewWithAnalysis(
             .build()
 
         // Use Cases
-        val preview = Preview.Builder().build().apply {
-            surfaceProvider = previewView.surfaceProvider
-        }
+        val preview = Preview.Builder()
+            .setResolutionSelector(resolutionSelector)
+            .build().apply {
+                surfaceProvider = previewView.surfaceProvider
+            }
 
         val analysis = ImageAnalysis.Builder()
             .setResolutionSelector(resolutionSelector)
