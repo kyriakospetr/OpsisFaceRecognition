@@ -92,7 +92,7 @@ fun EnrollSuccessScreen(
 
                 // Subtitle
                 Text(
-                    text = "You can now scan with a mask too. Your profile is saved and ready for verification.",
+                    text = "Your profile is saved and ready for verification.",
                     style = MaterialTheme.typography.bodyMedium,
                     fontFamily = bodyFontFamily,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

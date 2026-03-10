@@ -108,7 +108,7 @@ class FaceSampleCollector(
     }
 
     private fun createAlignedFaceBitmap(bitmap: Bitmap, leftEyeX: Float, leftEyeY: Float, rightEyeX: Float, rightEyeY: Float, eyeDistance: Float): Bitmap {
-        // We take the bitmap and we apply a similarity transform
+        // We take the bitmap, and we apply a similarity transform
         // So the eyes will go on fixed points in our 112x112
 
         // It is useful because we will feed our facenet model with the same geometric faces

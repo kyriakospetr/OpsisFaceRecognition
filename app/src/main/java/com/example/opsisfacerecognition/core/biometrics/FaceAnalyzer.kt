@@ -197,7 +197,7 @@ class FaceAnalyzer(
     }
 
     private fun isFacePositionAndPoseValid(face: Face, mapping: CoordinateMapping, now: Long): Boolean {
-        // We check if the person's face is inside the oval and doesn't look sideways etc..
+        // We check if the person's face is inside the oval and doesn't look sideways etc.
         val screenPosition = calculateScreenPosition(face, mapping)
 
         val isFaceCentered = faceValidation.isFaceInsideOval(

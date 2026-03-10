@@ -24,7 +24,7 @@ class FaceAttributeClassifier @Inject constructor(
         //If the probability is higher than the threshold, we assume the person wears glasses or hat
         private const val GLASSES_THRESHOLD = 0.6f
         private const val HAT_THRESHOLD = 0.6f
-        const val MODEL_INPUT_SIZE = 96 // Facenet Model is trained on 96x96
+        const val MODEL_INPUT_SIZE = 96 // MobileNetV2 Model is trained on 96x96
     }
 
     private val model: CompiledModel = runCatching {

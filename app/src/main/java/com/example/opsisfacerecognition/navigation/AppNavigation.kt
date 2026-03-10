@@ -46,7 +46,7 @@ fun AppNavigation() {
                 subtitle = "Scan your face to add your identity",
                 illustrationRes = R.drawable.face_scanning,
                 buttonText = "Begin face scan",
-                tip = "After enrollment, you'll be asked if you also want to register with a mask.",
+                tip = "Make sure your face is clearly visible and well-lit during enrollment.",
                 onGo = Routes.ENROLL_GRAPH,
             )
         }
