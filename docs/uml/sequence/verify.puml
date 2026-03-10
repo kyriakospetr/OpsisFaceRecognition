@@ -4,47 +4,56 @@ title Face Verification (on-device)
 actor User
 participant "Home\nScreen" as Home
 participant "Preparation\nScreen" as Prep
-participant "Scanning\nScreen" as Scan
+participant "Scanner\nScreen" as Scan
+participant "Success\nScreen" as Success
+participant "Failed\nScreen" as Failed
 participant "Camera" as Camera
 participant "Face\nAnalyzer" as Analyzer
-participant "MobileFaceNet" as FaceNet
+participant "MobileFaceNet\n(TFLite)" as FaceNet
 participant "Room\nDB" as DB
 
 User -> Home : Opens application
 Home -> Prep : Verify identity
 
 note right of Prep
-Guidelines:
-- Uncovered face
-- Good lighting
+  Guidelines:
+  - Uncovered face
+  - Good lighting
 end note
 
 Prep -> Scan : Start verification
-
 Scan -> Camera : Start capture
 
-loop While scanning (Until 4 frames of the same person are captured with good quality)
-Camera --> Scan : Frame
-Scan -> Analyzer : Detect + quality + blink liveness
-Analyzer --> Scan : Feedback state
+loop Until 4 quality frames captured
+  Camera --> Scan : Frame
+  Scan -> Analyzer : Detect + validate + passive liveness
+  note right of Analyzer
+    Checks: face centered, size,
+    head rotation, eyes open,
+    no glasses / no hat,
+    passive liveness (SilentFace),
+    blur, movement stability
+  end note
+  Analyzer --> Scan : Feedback state
 end
 
 Scan -> Camera : Stop capture
+Scan -> FaceNet : Extract embedding per sample (x4)
+FaceNet --> Scan : 4 embeddings → average + L2 normalize → probe embedding
 
-Scan -> FaceNet : Generate embedding
-FaceNet --> Scan : Live face vector
+Scan -> DB : Load all enrolled users
+DB --> Scan : Stored face templates
 
-Scan -> DB : Load enrolled users
-DB --> Scan : Stored templates
-loop For each user
-Scan -> FaceNet : Cosine similarity
-FaceNet --> Scan : Score
+loop For each enrolled user
+  Scan -> Scan : Cosine similarity (probe vs stored embedding)
 end
-DB --> Scan : Best score + matched user
 
-alt Best score >= threshold (0.82)
-Scan --> User : Show verified with full name
-else Best score < threshold
-Scan --> User : Show Scan failed (Try again)
+alt Best score >= 0.82
+  Scan -> Success : Navigate with matched user
+  Success --> User : Show verified identity + full name
+else Best score < 0.82
+  Scan -> Failed : Navigate
+  Failed --> User : "Verification failed – try again"
 end
+
 @enduml

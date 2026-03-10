@@ -1,0 +1,68 @@
+@startuml
+title FaceUiState – State Machine
+
+[*] --> Idle
+
+Idle    --> Loading    : scanner opened / camera init
+
+Loading --> Detection  : camera ready
+
+' ─── Detection sub-states (real-time feedback loop) ───────────────
+state Detection {
+  [*]          --> NoFace
+
+  NoFace       --> FaceDetected   : face appears
+  FaceDetected --> NoFace         : face lost
+
+  FaceDetected --> MultipleFaces  : >1 face detected
+  MultipleFaces --> FaceDetected  : single face again
+
+  FaceDetected --> MoveCloser     : face too small
+  FaceDetected --> CenterFace     : face off-center
+  FaceDetected --> LookStraight   : head rotation > 12°
+  FaceDetected --> HoldStill      : movement too fast
+  FaceDetected --> ImproveFocus   : frame blurry
+  FaceDetected --> EyesNotOpen    : eyes closed / covered
+  FaceDetected --> WearingGlasses : glasses detected
+  FaceDetected --> WearingHat     : hat detected
+  FaceDetected --> SpoofDetected  : passive liveness failed
+
+  MoveCloser    --> FaceDetected
+  CenterFace    --> FaceDetected
+  LookStraight  --> FaceDetected
+  HoldStill     --> FaceDetected
+  ImproveFocus  --> FaceDetected
+  EyesNotOpen   --> FaceDetected
+  WearingGlasses --> FaceDetected
+  WearingHat    --> FaceDetected
+  SpoofDetected --> FaceDetected
+}
+
+Detection --> Loading : 4 quality frames captured\n→ embedding computation begins
+
+' ─── Enroll branch ────────────────────────────────────────────────
+state "Enroll Flow" as EnrollFlow {
+  [*]              --> CaptureProcessed
+  CaptureProcessed --> FullNameConflict  : name taken or < 3 chars
+  FullNameConflict --> CaptureProcessed  : user corrects input
+  CaptureProcessed --> Completed         : valid name → saved to DB
+}
+
+' ─── Verify branch ────────────────────────────────────────────────
+state "Verify Flow" as VerifyFlow {
+  [*]     --> Matching
+  Matching --> Verified           : best cosine score >= 0.82
+  Matching --> VerificationFailed : best cosine score < 0.82
+}
+
+Loading --> EnrollFlow  : ENROLL mode – embedding ready
+Loading --> VerifyFlow  : VERIFY mode – embedding ready
+
+EnrollFlow --> [*] : Completed
+VerifyFlow --> [*]
+
+Loading   --> Error : exception
+Detection --> Error : exception
+Error     --> [*]
+
+@enduml

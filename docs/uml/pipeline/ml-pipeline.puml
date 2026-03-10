@@ -1,0 +1,104 @@
+@startuml
+title ML / Biometric Processing Pipeline
+
+skinparam activity {
+  BackgroundColor #FDFEFE
+  BorderColor     #2C3E50
+  FontSize 12
+}
+skinparam note {
+  BackgroundColor #FEF9E7
+  BorderColor     #F0B27A
+}
+
+|Camera (CameraX)|
+start
+:Capture ImageProxy frame;
+
+|FaceAnalyzer|
+:Convert ImageProxy\nto Bitmap;
+:ML Kit Face Detection\n(landmarks · classifications · tracking);
+
+if (Face detected?) then (no face\nor multiple)
+  :Emit feedback state\n(NoFace / MultipleFaces);
+  stop
+endif
+
+:FaceValidation\n──────────────\n• Face centered in oval\n• Size >= 80% of guide\n• Head rotation <= 12°\n• Eye landmarks detectable\n• Eyes open prob >= 0.70\n• Movement speed <= 2000 px/s;
+
+if (Geometry valid?) then (no)
+  :Emit feedback state\n(CenterFace / MoveCloser /\nLookStraight / HoldStill /\nEyesNotOpen);
+  stop
+endif
+
+|FaceAttributeClassifier (TFLite)|
+note right
+  Runs every 500 ms
+  MobileNetV2 · input 96×96
+  Outputs: glasses prob, hat prob
+  Threshold: >= 0.6 → reject
+end note
+:Classify face attributes\n(glasses · hat);
+
+if (Attributes OK?) then (no)
+  :Emit feedback state\n(WearingGlasses / WearingHat);
+  stop
+endif
+
+|LivenessDetector (ONNX Runtime)|
+note right
+  Runs every 500 ms
+  SilentFace ×2 models (scale 2.7 · 4.0)
+  Input 80×80 · averaged scores
+  Threshold: >= 0.972017 → live
+end note
+:Passive liveness check\n(SilentFace dual-scale);
+
+if (Live face?) then (no)
+  :Emit feedback state\n(SpoofDetected);
+  stop
+endif
+
+|FaceSampleCollector|
+:Align face crop via\neye landmark geometry\n(target: 112×112 px);
+:Laplacian variance\nblur check >= 220;
+
+if (Sharp frame?) then (no)
+  :Emit feedback state\n(ImproveFocus);
+  stop
+endif
+
+:Buffer aligned sample\n(100 ms between samples);
+
+if (4 samples collected?) then (no)
+  :Emit FaceDetected\n(continue loop);
+  stop
+endif
+
+:Return 4 aligned bitmaps;
+
+|MobileFaceNetLiteRT (TFLite)|
+note right
+  Input: 112×112 RGB
+  Normalise: (px − 127.5) / 128.0
+  Output: 128-d float vector
+  CPU inference
+end note
+:Extract 128-d embedding\nper sample (×4);
+:Average 4 embeddings\n→ L2 normalise\n→ final embedding vector;
+
+|FaceRecognizerViewModel|
+if (Flow mode?) then (ENROLL)
+  :Store pending embedding\n→ navigate to name entry;
+else (VERIFY)
+  :Cosine similarity vs\nall stored embeddings\n(VerifyUserUseCase);
+  if (Best score >= 0.82?) then (yes)
+    :Navigate → Verify Success;
+  else (no)
+    :Navigate → Verify Failed;
+  endif
+endif
+
+stop
+
+@enduml

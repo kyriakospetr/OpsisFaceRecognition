@@ -1,0 +1,22 @@
+@startuml
+title Room Database – Entity Relationship Diagram
+
+skinparam linetype ortho
+
+entity "users" as Users {
+  * **localId** : INTEGER <<PK, autoGenerate>>
+  --
+  * userId    : TEXT      <<UUID>>
+  * fullName  : TEXT      <<UNIQUE>>
+  * embedding : BLOB      <<128 × FLOAT32 = 512 bytes>>
+}
+
+note right of Users
+  Encrypted at rest via SQLCipher
+  (passphrase from DatabasePassphraseProvider).
+
+  embedding stored as little-endian ByteArray.
+  Cosine similarity computed in-app at runtime.
+end note
+
+@enduml

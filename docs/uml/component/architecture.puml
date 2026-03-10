@@ -1,0 +1,70 @@
+@startuml
+title Clean Architecture – Component Overview
+
+skinparam rectangle {
+  RoundCorner 10
+}
+skinparam component {
+  BackgroundColor<<presentation>> #AED6F1
+  BackgroundColor<<domain>>       #A9DFBF
+  BackgroundColor<<data>>         #FAD7A0
+  BackgroundColor<<core>>         #F1948A
+  FontSize 12
+}
+skinparam packageStyle rectangle
+
+' ─── Presentation Layer ───────────────────────────────────────────
+package "Presentation Layer" {
+  component "Screens (Compose UI)\nHome · Prep · Scanner · Enroll\nEnrollSuccess · VerifySuccess\nProcessFailed · Settings" as Screens <<presentation>>
+  component "FaceRecognizerViewModel\nSettingsViewModel" as VMs <<presentation>>
+  component "AppNavigation\n(Navigation Compose\n+ nested graphs)" as Nav <<presentation>>
+}
+
+' ─── Domain Layer ─────────────────────────────────────────────────
+package "Domain Layer" {
+  component "Use Cases\nComputeEmbeddingUseCase\nEnrollUserUseCase · VerifyUserUseCase\nListUsersUseCase · DeleteUserByLocalIdUseCase\nDeleteAllUsersUseCase · FindUserByFullNameUseCase" as UseCases <<domain>>
+  component "UserRepository\n(interface)" as RepoInterface <<domain>>
+  component "User\n(domain model)" as DomainModel <<domain>>
+}
+
+' ─── Data Layer ───────────────────────────────────────────────────
+package "Data Layer" {
+  component "UserRepositoryImpl" as RepoImpl <<data>>
+  component "UserDao" as Dao <<data>>
+  component "AppDatabase\n(Room + SQLCipher)" as DB <<data>>
+  component "UserEntity\n+ EmbeddingConverters" as Entity <<data>>
+}
+
+' ─── Core / Biometrics ────────────────────────────────────────────
+package "Core / Biometrics" {
+  component "FaceAnalyzer\n(CameraX ImageAnalysis)" as Analyzer <<core>>
+  component "FaceValidation\n(geometry checks)" as Validation <<core>>
+  component "FaceSampleCollector\n(blur · alignment · buffering)" as Collector <<core>>
+  component "LivenessDetector\n(SilentFace ONNX ×2)" as Liveness <<core>>
+  component "FaceAttributeClassifier\n(glasses · hat – TFLite)" as Attributes <<core>>
+  component "MobileFaceNetLiteRT\n(128-d embedding – TFLite)" as FaceNet <<core>>
+}
+
+' ─── Presentation → Domain ────────────────────────────────────────
+Screens --> VMs
+Nav    --> Screens
+VMs    --> UseCases
+VMs    --> Analyzer
+VMs    --> FaceNet
+
+' ─── Domain → Data ────────────────────────────────────────────────
+UseCases      --> RepoInterface
+RepoInterface <|.. RepoImpl : implements
+
+' ─── Data internals ───────────────────────────────────────────────
+RepoImpl --> Dao
+Dao      --> DB
+DB       --> Entity
+
+' ─── Core internals ───────────────────────────────────────────────
+Analyzer --> Validation
+Analyzer --> Collector
+Analyzer --> Liveness
+Analyzer --> Attributes
+
+@enduml

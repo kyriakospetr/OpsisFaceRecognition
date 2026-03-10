@@ -1,53 +1,68 @@
 @startuml
-title Standard Face Registration
+title Standard Face Enrollment
 
 actor User
 participant "Home\nScreen" as Home
-participant "Preperation\nScreen" as Prep
-participant "Scanning\nScreen" as Scan
+participant "Preparation\nScreen" as Prep
+participant "Scanner\nScreen" as Scan
 participant "Enroll\nScreen" as Enroll
 participant "Success\nScreen" as Success
+participant "Failed\nScreen" as Failed
 participant "Camera" as Camera
 participant "Face\nAnalyzer" as Analyzer
-participant "MobileFaceNet" as FaceNet
+participant "MobileFaceNet\n(TFLite)" as FaceNet
 participant "Room\nDB" as DB
 
 User -> Home : Open application
 Home -> Prep : Add your face
 
 note right of Prep
-Guidelines:
-- Uncovered face
-- Good lighting
+  Guidelines:
+  - Uncovered face
+  - Good lighting
 end note
 
-Prep -> Scan : Begin face scan
+Prep -> Scan : Begin scan
 Scan -> Camera : Start capture
 
-loop While scanning (Until 4 frames of the same person are captured with good quality)
-Camera --> Scan : Frame
-Scan -> Analyzer : Detect + quality + blink liveness
-Analyzer --> Scan : Feedback state
+loop Until 4 quality frames captured
+  Camera --> Scan : Frame
+  Scan -> Analyzer : Detect + validate + passive liveness
+  note right of Analyzer
+    Checks: face centered, size,
+    head rotation, eyes open,
+    no glasses / no hat,
+    passive liveness (SilentFace),
+    blur, movement stability
+  end note
+  Analyzer --> Scan : Feedback state
 end
 
 Scan -> Camera : Stop capture
-Scan -> FaceNet : Generate embedding (4 samples -> average)
-FaceNet --> Scan : Pending embedding
-Scan -> Enroll : Open full-name form
+Scan -> FaceNet : Extract embedding per sample (x4)
+FaceNet --> Scan : 4 embeddings → average + L2 normalize → pending embedding
 
-loop Until the user types a unique full name
-User -> Enroll : Enter full name + Continue
-Enroll -> DB : Check full name
-DB --> Enroll : Conflict
-Enroll --> User : Show "Name already in use"
+alt Embedding computed successfully
+  Scan -> Enroll : Navigate with pending embedding
+
+  loop Until valid name entered
+    User -> Enroll : Enter full name + Continue
+    Enroll -> DB : Check full name availability
+    DB --> Enroll : Conflict or name too short
+    Enroll --> User : Show error (name taken / too short)
+  end
+
+  DB --> Enroll : Available
+  Enroll -> DB : Save user (fullName, embedding)
+  DB --> Enroll : Saved
+  Enroll -> Success : Navigate
+  Success --> User : "You are all set, {fullName}"
+  User -> Success : Tap Continue
+  Success -> Home : Return to home
+
+else Embedding computation failed
+  Scan -> Failed : Navigate
+  Failed --> User : Show error + retry option
 end
-
-DB --> Enroll : Available
-Enroll -> DB : Save user(fullName, embedding)
-DB --> Enroll : Saved
-Enroll -> Success : Navigate to success
-Success --> User : Show "You are all set {fullName}"
-User -> Success : Tap Continue
-Success -> Home : Continue
 
 @enduml

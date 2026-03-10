@@ -1,0 +1,35 @@
+@startuml
+title Opsis Face Recognition – Use Cases
+
+left to right direction
+
+actor User as user
+
+rectangle "Opsis Face Recognition (on-device)" {
+
+  usecase "Enroll Face" as UC_Enroll
+  usecase "Capture Face\nScan" as UC_Scan
+  usecase "Enter Full Name" as UC_Name
+
+  usecase "Verify Identity" as UC_Verify
+
+  usecase "View Registered\nFaces" as UC_List
+  usecase "Delete a Face" as UC_Delete
+  usecase "Erase All Data" as UC_Erase
+
+}
+
+user --> UC_Enroll
+user --> UC_Verify
+user --> UC_List
+user --> UC_Delete
+user --> UC_Erase
+
+UC_Enroll ..> UC_Scan  : <<include>>
+UC_Enroll ..> UC_Name  : <<include>>
+UC_Verify ..> UC_Scan  : <<include>>
+
+UC_Delete ..> UC_List  : <<include>>
+UC_Erase  ..> UC_List  : <<include>>
+
+@enduml
