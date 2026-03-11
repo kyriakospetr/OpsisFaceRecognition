@@ -74,6 +74,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.isSystemInDarkTheme
+import com.example.opsisfacerecognition.app.ui.theme.attentionContainerDark
+import com.example.opsisfacerecognition.app.ui.theme.attentionContainerLight
+import com.example.opsisfacerecognition.app.ui.theme.onAttentionContainerDark
+import com.example.opsisfacerecognition.app.ui.theme.onAttentionContainerLight
 import com.example.opsisfacerecognition.core.states.FaceUiState.Detection
 
 private const val STATUS_ANIMATION_MS = 220
@@ -351,17 +356,18 @@ fun StatusBanner(
     modifier: Modifier = Modifier
 ) {
     // We determine the background, content, icon based on MessageTone
+    val isDark = isSystemInDarkTheme()
     val targetBackgroundColor = when (tone) {
         MessageTone.Neutral -> MaterialTheme.colorScheme.surface
         MessageTone.Success -> MaterialTheme.colorScheme.primaryContainer
-        MessageTone.Attention -> MaterialTheme.colorScheme.tertiaryContainer
+        MessageTone.Attention -> if (isDark) attentionContainerDark else attentionContainerLight
         MessageTone.Error -> MaterialTheme.colorScheme.errorContainer
     }
 
     val targetContentColor = when (tone) {
         MessageTone.Neutral -> MaterialTheme.colorScheme.onSurface
         MessageTone.Success -> MaterialTheme.colorScheme.onPrimary
-        MessageTone.Attention -> MaterialTheme.colorScheme.onTertiaryContainer
+        MessageTone.Attention -> if (isDark) onAttentionContainerDark else onAttentionContainerLight
         MessageTone.Error -> MaterialTheme.colorScheme.onErrorContainer
     }
 
