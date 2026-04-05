@@ -46,17 +46,26 @@ class LivenessDetector @Inject constructor(
     // boundingBox: the face bounding box from ML Kit
     fun check(upright: Bitmap, boundingBox: Rect): LivenessResult {
         var liveSum = 0f
+        var validModels = 0
         sessions.forEachIndexed { index, session ->
             // Crop the face region at the given scale and resize to 80x80
             val scale = CROP_SCALES[index]
-            val crop = cropAndScale(upright, boundingBox, scale)
-                ?: return LivenessResult(isLive = false, score = 0f)
-            liveSum += runCatching { infer(session, crop) }.getOrDefault(0f)
+            val crop = cropAndScale(upright, boundingBox, scale) ?: return@forEachIndexed
+            val score = runCatching { infer(session, crop) }.getOrDefault(0f)
             crop.recycle()
+            liveSum += score
+            validModels++
         }
 
-        // Average the live score from both models
-        val avg = liveSum / sessions.size
+        // If no model could produce a crop, reject — do not grant access
+        if (validModels == 0) {
+            android.util.Log.w("Liveness", "No valid crops produced — rejecting")
+            return LivenessResult(isLive = false, score = 0f)
+        }
+
+        // Average the live score from models that succeeded
+        val avg = liveSum / validModels
+        android.util.Log.d("Liveness", "score=${"%.6f".format(avg)} models=$validModels/${ sessions.size} threshold=$LIVENESS_THRESHOLD isLive=${avg >= LIVENESS_THRESHOLD}")
         return LivenessResult(isLive = avg >= LIVENESS_THRESHOLD, score = avg)
     }
 

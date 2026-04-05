@@ -31,22 +31,24 @@ class FaceAnalyzer(
 
     companion object {
         private const val POSITION_TOLERANCE = 0.5f // How much we tolerate the user to be away from oval's center
-        private const val MIN_FACE_SIZE_RATIO = 0.8f // The minimum face size we need
+        private const val MIN_FACE_SIZE_RATIO = 0.55f // The minimum face size we need
         private const val MAX_ROTATION_DEGREES = 12f // How much we allow the face to be rotated
-        private const val STABILITY_DURATION_MS = 600L // How many ms the face has to stay stable
-        private const val TARGET_SAMPLES = 2 // How many bitmaps to capture
-        private const val SAMPLE_INTERVAL_MS = 100L // How many seconds we pause before taking another sample
+        private const val STABILITY_DURATION_MS = 800L // How many ms the face has to stay stable
+        private const val TARGET_SAMPLES = 3 // How many bitmaps to capture
+        private const val SAMPLE_INTERVAL_MS = 350L // Pause between samples for real variation
         private const val BLUR_VARIANCE_THRESHOLD = 220.0 // Threshold to determine if an image is blurry or not
-        private const val MIN_EYE_DISTANCE_PX = 25f // Minimum distance between 2 eyes
+        private const val MIN_EYE_DISTANCE_PX = 18f // Minimum distance between 2 eyes
         private const val MAX_CENTER_SPEED_PX_PER_SECOND = 2000f // The max speed the face should be moving
         private const val MIN_EYE_DISTANCE_FOR_ALIGNMENT = 10f // The minimum distance where we perform face alignment
 
-        private const val SAME_FEEDBACK_COOLDOWN_MS = 400L // Cooldown for repeated identical feedback
-        private const val FEEDBACK_SWITCH_COOLDOWN_MS = 400L // Minimum spacing between different feedback states
+        private const val SAME_FEEDBACK_COOLDOWN_MS = 350L // Cooldown for repeated identical feedback
+        private const val FEEDBACK_SWITCH_COOLDOWN_MS = 300L // Minimum spacing between different feedback states
 
-        private const val EYE_OPEN_THRESHOLD = 0.70f
+        private const val EYE_OPEN_THRESHOLD = 0.55f
 
-        private const val ATTRIBUTE_CHECK_INTERVAL_MS = 500L
+        private const val MAX_FACE_IMAGE_RATIO = 0.6f // If face bbox occupies >60% of image width, user is too close
+        private const val ATTRIBUTE_CHECK_INTERVAL_MS = 300L // Runs during stability and capture phases
+        private const val CONSECUTIVE_FAILURES_REQUIRED = 2 // How many consecutive checks must fail before blocking
 
         // For our facenet Model
         // They are used to create the bitmap
@@ -77,6 +79,11 @@ class FaceAnalyzer(
     private var lastAttributeCheckTimeMs = 0L
     private var lastAttributeResult = FaceAttributeResult(hasGlasses = false, hasHat = false)
     private var lastLivenessResult = LivenessDetector.LivenessResult(isLive = true, score = 1f)
+
+    // Consecutive failure counters — block only after CONSECUTIVE_FAILURES_REQUIRED hits
+    private var consecutiveGlassesFailures = 0
+    private var consecutiveHatFailures = 0
+    private var consecutiveLivenessFailures = 0
 
     // Emits UI feedback with cooldowns so messages do not flicker frame-by-frame
     private val detectionFeedbackEmitter = DetectionFeedbackEmitter(
@@ -164,6 +171,13 @@ class FaceAnalyzer(
     }
 
     private fun processDetectedFaces(faces: List<Face>, mapping: CoordinateMapping, imageProxy: ImageProxy, rotationDegrees: Int) {
+        // Phase 1 (synchronized): lightweight session-state validation
+        val face: Face
+        val currentTime: Long
+        val needsAttributeCheck: Boolean
+        val needsSample: Boolean
+        val isStable: Boolean
+
         synchronized(session) {
             val now = SystemClock.elapsedRealtime()
 
@@ -171,52 +185,176 @@ class FaceAnalyzer(
             if (!isFacePositionAndPoseValid(singleFace, mapping, now)) {
                 // Single face exists, but it failed quality/position checks.
                 // The specific feedback was already emitted.
-                session.resetCaptureState()
+                resetAllState()
                 return
             }
 
-            handleFaceCapture(singleFace, imageProxy, rotationDegrees)
+            currentTime = SystemClock.elapsedRealtime()
+            if (!isTrackingIdValid(singleFace.trackingId)) return
+
+            if (!faceValidation.isFaceMovementStable(singleFace, currentTime, session)) {
+                emitDetection(Detection.HoldStill, currentTime)
+                session.stabilityStartTimeMs = null
+                return
+            }
+
+            if (!faceValidation.areEyeLandmarksDetectable(singleFace)) {
+                emitDetection(Detection.MoveCloser, currentTime)
+                return
+            }
+
+            val leftEyeOpen = singleFace.leftEyeOpenProbability
+            val rightEyeOpen = singleFace.rightEyeOpenProbability
+            if (leftEyeOpen == null || rightEyeOpen == null ||
+                leftEyeOpen < EYE_OPEN_THRESHOLD || rightEyeOpen < EYE_OPEN_THRESHOLD) {
+                emitDetection(Detection.EyesNotOpen, currentTime)
+                return
+            }
+
+            face = singleFace
+            needsAttributeCheck = currentTime - lastAttributeCheckTimeMs >= ATTRIBUTE_CHECK_INTERVAL_MS
+            isStable = hasReachedStability(currentTime)
+            needsSample = isStable && sampleCollector.shouldCaptureSample(currentTime, session)
         }
+
+        // Phase 2 (no lock): attribute/liveness checks run during stability AND capture
+        val upright = if (needsAttributeCheck || needsSample) extractUprightBitmap(imageProxy, rotationDegrees) else null
+
+        // Check if the face is too close to the camera for reliable liveness/attribute crops
+        if (upright != null) {
+            val faceRatio = face.boundingBox.width().toFloat() / upright.width
+            if (faceRatio > MAX_FACE_IMAGE_RATIO) {
+                upright.recycle()
+                emitDetection(Detection.TooClose, currentTime)
+                return
+            }
+        }
+
+        if (needsAttributeCheck && upright != null) {
+            lastAttributeCheckTimeMs = currentTime
+            val attrCrop = cropAndScaleForAttribute(upright, face.boundingBox)
+            if (attrCrop != null) {
+                lastAttributeResult = faceAttributeClassifier.classify(attrCrop)
+                attrCrop.recycle()
+            }
+            lastLivenessResult = livenessDetector.check(upright, face.boundingBox)
+
+            // Update consecutive failure counters
+            if (lastAttributeResult.hasGlasses) consecutiveGlassesFailures++ else consecutiveGlassesFailures = 0
+            if (lastAttributeResult.hasHat) consecutiveHatFailures++ else consecutiveHatFailures = 0
+            if (!lastLivenessResult.isLive) consecutiveLivenessFailures++ else consecutiveLivenessFailures = 0
+        }
+
+        if (consecutiveGlassesFailures >= CONSECUTIVE_FAILURES_REQUIRED) {
+            upright?.recycle()
+            emitDetection(Detection.WearingGlasses, currentTime)
+            return
+        }
+        if (consecutiveHatFailures >= CONSECUTIVE_FAILURES_REQUIRED) {
+            upright?.recycle()
+            emitDetection(Detection.WearingHat, currentTime)
+            return
+        }
+        if (consecutiveLivenessFailures >= CONSECUTIVE_FAILURES_REQUIRED) {
+            upright?.recycle()
+            emitDetection(Detection.SpoofDetected, currentTime)
+            return
+        }
+
+        if (!isStable) {
+            upright?.recycle()
+            emitDetection(Detection.FaceDetected, currentTime)
+            return
+        }
+
+        emitDetection(Detection.FaceDetected, currentTime)
+
+        if (!needsSample || upright == null) {
+            upright?.recycle()
+            return
+        }
+
+        // Phase 3 (synchronized): sample capture mutates session state
+        synchronized(session) {
+            if (session.isCaptureComplete) {
+                upright.recycle()
+                return
+            }
+
+            when (
+                val result = sampleCollector.captureSample(
+                    uprightBitmap = upright,
+                    face = face,
+                    currentTime = currentTime,
+                    session = session
+                )
+            ) {
+                FaceSampleCollector.CaptureResult.Blurry -> {
+                    session.lastSampleTimeMs = currentTime
+                    emitDetection(Detection.ImproveFocus, currentTime)
+                }
+
+                is FaceSampleCollector.CaptureResult.Completed -> {
+                    onImagesCaptured(result.bitmaps)
+                }
+
+                FaceSampleCollector.CaptureResult.Added,
+                FaceSampleCollector.CaptureResult.Skipped -> {
+                    // No-op
+                }
+            }
+        }
+        upright.recycle()
     }
 
     private fun extractSingleFaceOrEmitFeedback(faces: List<Face>, now: Long): Face? {
         if (faces.isEmpty()) {
             // If we detect no face reset
             emitDetection(Detection.NoFace, now)
-            session.resetCaptureState()
+            resetAllState()
             return null
         }
 
         if (faces.size > 1) {
             // If we detect multiple faces
             emitDetection(Detection.MultipleFaces, now)
-            session.resetCaptureState()
+            resetAllState()
             return null
         }
 
         return faces.first()
     }
 
+    private fun resetAllState() {
+        session.resetCaptureState()
+        consecutiveGlassesFailures = 0
+        consecutiveHatFailures = 0
+        consecutiveLivenessFailures = 0
+        lastAttributeCheckTimeMs = 0L
+    }
+
     private fun isFacePositionAndPoseValid(face: Face, mapping: CoordinateMapping, now: Long): Boolean {
         // We check if the person's face is inside the oval and doesn't look sideways etc.
         val screenPosition = calculateScreenPosition(face, mapping)
 
-        val isFaceCentered = faceValidation.isFaceInsideOval(
+        val ovalCheck = faceValidation.checkFaceInsideOval(
             faceCenter = screenPosition,
             faceWidth = face.boundingBox.width() * mapping.scale,
             ovalCenter = ovalCenter,
             ovalRadiusX = ovalRadiusX,
             ovalRadiusY = ovalRadiusY
         )
-        if (!isFaceCentered) {
-            emitDetection(Detection.CenterFace, now)
-            return false
+        when (ovalCheck) {
+            FaceValidation.OvalCheckResult.NOT_CENTERED -> { emitDetection(Detection.CenterFace, now); return false }
+            FaceValidation.OvalCheckResult.TOO_FAR -> { emitDetection(Detection.TooFar, now); return false }
+            FaceValidation.OvalCheckResult.OK -> { /* continue */ }
         }
 
-        val isFaceStraight = faceValidation.isFaceOrientationCorrect(face)
-        if (!isFaceStraight) {
-            emitDetection(Detection.LookStraight, now)
-            return false
+        when (faceValidation.checkFaceOrientation(face)) {
+            FaceValidation.OrientationCheckResult.LOOK_STRAIGHT -> { emitDetection(Detection.LookStraight, now); return false }
+            FaceValidation.OrientationCheckResult.LOOK_STRAIGHT_AHEAD -> { emitDetection(Detection.LookStraightAhead, now); return false }
+            FaceValidation.OrientationCheckResult.DONT_TILT -> { emitDetection(Detection.DontTiltHead, now); return false }
+            FaceValidation.OrientationCheckResult.OK -> { /* continue */ }
         }
 
         return true
@@ -235,101 +373,6 @@ class FaceAnalyzer(
         val screenX = screenWidth - mappedX
 
         return Offset(screenX, mappedY)
-    }
-
-    private fun handleFaceCapture(face: Face, imageProxy: ImageProxy, rotationDegrees: Int) {
-        // Requirements before starting capturing images
-        // As ImageProxy to Bitmap is a heavy process
-        // We do not want to capture every frame, convert it to bitmap and then validate
-        // Also it ensures our facenet model will perform better
-        val currentTime = SystemClock.elapsedRealtime()
-
-        if (!isTrackingIdValid(face.trackingId)) return
-        if (!hasReachedStability(currentTime)) return
-
-        if (!faceValidation.isFaceMovementStable(face, currentTime, session)) {
-            emitDetection(Detection.HoldStill, currentTime)
-            session.stabilityStartTimeMs = null
-            return
-        }
-
-        if (!faceValidation.areEyeLandmarksDetectable(face)) {
-            emitDetection(Detection.MoveCloser, currentTime)
-            return
-        }
-
-        val leftEyeOpen = face.leftEyeOpenProbability
-        val rightEyeOpen = face.rightEyeOpenProbability
-        if (leftEyeOpen == null || rightEyeOpen == null ||
-            leftEyeOpen < EYE_OPEN_THRESHOLD || rightEyeOpen < EYE_OPEN_THRESHOLD) {
-            emitDetection(Detection.EyesNotOpen, currentTime)
-            return
-        }
-
-        val needsAttributeCheck = currentTime - lastAttributeCheckTimeMs >= ATTRIBUTE_CHECK_INTERVAL_MS
-        val needsSample = sampleCollector.shouldCaptureSample(currentTime, session)
-
-        // Decode and rotate the frame at most once, shared between attribute check and sample capture
-        val upright = if (needsAttributeCheck || needsSample) extractUprightBitmap(imageProxy, rotationDegrees) else null
-
-        if (needsAttributeCheck && upright != null) {
-            lastAttributeCheckTimeMs = currentTime
-            val attrCrop = cropAndScaleForAttribute(upright, face.boundingBox)
-            if (attrCrop != null) {
-                lastAttributeResult = faceAttributeClassifier.classify(attrCrop)
-                attrCrop.recycle()
-            }
-            lastLivenessResult = livenessDetector.check(upright, face.boundingBox)
-        }
-
-        if (lastAttributeResult.hasGlasses) {
-            upright?.recycle()
-            emitDetection(Detection.WearingGlasses, currentTime)
-            return
-        }
-        if (lastAttributeResult.hasHat) {
-            upright?.recycle()
-            emitDetection(Detection.WearingHat, currentTime)
-            return
-        }
-        if (!lastLivenessResult.isLive) {
-            upright?.recycle()
-            emitDetection(Detection.SpoofDetected, currentTime)
-            return
-        }
-
-        emitDetection(Detection.FaceDetected, currentTime)
-
-        // We pause a bit after a successful capture
-        // We do not immediately start capturing 4 pictures
-        if (!needsSample || upright == null) {
-            upright?.recycle()
-            return
-        }
-
-        when (
-            val result = sampleCollector.captureSample(
-                uprightBitmap = upright,
-                face = face,
-                currentTime = currentTime,
-                session = session
-            )
-        ) {
-            FaceSampleCollector.CaptureResult.Blurry -> {
-                session.lastSampleTimeMs = currentTime
-                emitDetection(Detection.ImproveFocus, currentTime)
-            }
-
-            is FaceSampleCollector.CaptureResult.Completed -> {
-                onImagesCaptured(result.bitmaps)
-            }
-
-            FaceSampleCollector.CaptureResult.Added,
-            FaceSampleCollector.CaptureResult.Skipped -> {
-                // No-op
-            }
-        }
-        upright.recycle()
     }
 
     private fun isTrackingIdValid(trackingId: Int?): Boolean {

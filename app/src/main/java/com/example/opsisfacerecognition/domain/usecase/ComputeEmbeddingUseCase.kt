@@ -9,8 +9,8 @@ class ComputeEmbeddingUseCase @Inject constructor(
 ) {
     operator fun invoke(images: List<Bitmap>): FloatArray {
         // For each bitmap, get the embeddings then get the average embedding and then normalize them with L2
-        // We get 4 images for each enrollment because we don't want to rely on a "lucky" embedding
-        val embeddings = images.map { faceNetLiteRT.getEmbedding(it) }
+        // We normalize each embedding first so every sample contributes equally regardless of magnitude
+        val embeddings = images.map { faceNetLiteRT.l2Normalize(faceNetLiteRT.getEmbedding(it)) }
         val avg = faceNetLiteRT.averageEmbeddings(embeddings)
         val normalized = faceNetLiteRT.l2Normalize(avg)
 

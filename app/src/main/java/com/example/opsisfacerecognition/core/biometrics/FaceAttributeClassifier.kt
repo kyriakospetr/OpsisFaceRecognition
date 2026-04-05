@@ -22,8 +22,8 @@ class FaceAttributeClassifier @Inject constructor(
 
     companion object {
         //If the probability is higher than the threshold, we assume the person wears glasses or hat
-        private const val GLASSES_THRESHOLD = 0.6f
-        private const val HAT_THRESHOLD = 0.6f
+        private const val GLASSES_THRESHOLD = 0.20f
+        private const val HAT_THRESHOLD = 0.20f
         const val MODEL_INPUT_SIZE = 96 // MobileNetV2 Model is trained on 96x96
     }
 
@@ -66,6 +66,7 @@ class FaceAttributeClassifier @Inject constructor(
         // index 0 = glasses probability, index 1 = hat probability
         val glassesProb = if (output.isNotEmpty()) output[0] else 0f
         val hatProb = if (output.size > 1) output[1] else 0f
+        android.util.Log.d("FaceAttr", "glasses=${"%.4f".format(glassesProb)} hat=${"%.4f".format(hatProb)}")
 
         return FaceAttributeResult(
             hasGlasses = glassesProb >= GLASSES_THRESHOLD,

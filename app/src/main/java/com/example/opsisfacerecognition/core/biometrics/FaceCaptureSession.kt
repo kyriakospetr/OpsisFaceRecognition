@@ -15,7 +15,7 @@ class FaceCaptureSessionState(
 
     // Reset State helper
     // Use this when we lose the face, detect multiple faces or tracking id changes.
-    // Callers must hold a synchronized(this) lock — see FaceAnalyzer.processDetectedFaces().
+    // Callers must hold a synchronized(this) lock.
     fun resetCaptureState() {
         currentTrackingId = null
         stabilityStartTimeMs = null

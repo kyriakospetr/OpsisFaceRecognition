@@ -15,7 +15,9 @@ class FaceValidation(
     private val maxCenterSpeedPxPerSecond: Float
 ) {
 
-    fun isFaceInsideOval(faceCenter: Offset, faceWidth: Float, ovalCenter: Offset, ovalRadiusX: Float, ovalRadiusY: Float): Boolean {
+    enum class OvalCheckResult { OK, NOT_CENTERED, TOO_FAR }
+
+    fun checkFaceInsideOval(faceCenter: Offset, faceWidth: Float, ovalCenter: Offset, ovalRadiusX: Float, ovalRadiusY: Float): OvalCheckResult {
         // We calculate the distance between the face and the center of the oval
         val horizontalDiff = abs(faceCenter.x - ovalCenter.x)
         val verticalDiff = abs(faceCenter.y - ovalCenter.y)
@@ -24,16 +26,24 @@ class FaceValidation(
         val isWithinPositionTolerance = horizontalDiff <= (ovalRadiusX * positionTolerance) &&
             verticalDiff <= (ovalRadiusY * positionTolerance)
 
+        if (!isWithinPositionTolerance) return OvalCheckResult.NOT_CENTERED
+
         // We check if the face is near enough to the camera
         val isFaceSizeCorrect = faceWidth > (ovalRadiusX * minFaceSizeRatio)
 
-        return isWithinPositionTolerance && isFaceSizeCorrect
+        return if (isFaceSizeCorrect) OvalCheckResult.OK else OvalCheckResult.TOO_FAR
     }
 
-    fun isFaceOrientationCorrect(face: Face): Boolean {
-        return abs(face.headEulerAngleY) <= maxRotationDegrees && // Do not look sideways (left and right)
-            abs(face.headEulerAngleX) <= maxRotationDegrees && // Do not look up or down
-            abs(face.headEulerAngleZ) <= maxRotationDegrees // Do not have your face rolled
+    enum class OrientationCheckResult { OK, LOOK_STRAIGHT, LOOK_STRAIGHT_AHEAD, DONT_TILT }
+
+    fun checkFaceOrientation(face: Face): OrientationCheckResult {
+        // Yaw: looking left or right
+        if (abs(face.headEulerAngleY) > maxRotationDegrees) return OrientationCheckResult.LOOK_STRAIGHT
+        // Pitch: looking up or down
+        if (abs(face.headEulerAngleX) > maxRotationDegrees) return OrientationCheckResult.LOOK_STRAIGHT_AHEAD
+        // Roll: head tilted sideways
+        if (abs(face.headEulerAngleZ) > maxRotationDegrees) return OrientationCheckResult.DONT_TILT
+        return OrientationCheckResult.OK
     }
 
     // We rely on eye landmarks for alignment, so we need to verify they are detectable.

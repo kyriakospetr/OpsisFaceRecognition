@@ -30,7 +30,7 @@ An Android face recognition app built with Jetpack Compose.
 
 The app opens the camera, detects a face with ML Kit, and when conditions are good it:
 
-- captures 2 face samples
+- captures 3 face samples
 - computes an embedding with MobileFaceNet (`mobilefacenet.tflite`)
 - stores the embedding and name in Room DB
 
@@ -88,14 +88,15 @@ Before accepting samples, the analyzer checks:
 - exactly one face
 - face inside the oval guide
 - near-straight orientation (yaw/pitch/roll up to ~12 degrees)
-- stability for ~600ms
+- face not too close or too far from the camera
+- stability for ~800ms
 - sufficient eye distance
 - both eyes open
 - no eyeglasses or hat detected (via on-device `face_attributes.tflite` model)
 - passive liveness check (via on-device SilentFace ONNX models)
 - anti-blur check (Laplacian variance)
 
-Then it captures 2 samples and computes average embedding + L2 normalization.
+Then it captures 3 samples and computes average embedding + L2 normalization.
 
 ## Face Attribute Classification
 
@@ -107,7 +108,7 @@ ML Kit does not provide eyeglasses or hat detection. To enforce bare-face captur
 - **Input**: 96×96 RGB face crop, normalized to [0, 1]
 - **Output**: `[glasses_prob, hat_prob]` — independent sigmoid probabilities
 - **Export**: converted to TFLite (`face_attributes.tflite`) and bundled in `assets/`
-- **Inference**: runs every 500ms on the face bounding box crop; result is cached and applied every frame to block capture
+- **Inference**: runs every 300ms on the face bounding box crop (during both stability and capture phases); requires 2 consecutive detections before blocking capture to filter transient lighting artifacts
 
 Training notebook: `ml/train_face_attributes.ipynb` (designed for Google Colab).
 
@@ -118,9 +119,9 @@ To prevent spoofing attacks (printed photos, screens, masks), a passive liveness
 - **Models**: two SilentFace ONNX models (`silentface40.onnx`, `silentface27.onnx`) run in parallel — one on a wider crop (scale 4.0×) and one on a tighter crop (scale 2.7×) of the face bounding box
 - **Input**: 80×80 RGB crop, raw pixel values [0, 255], CHW layout
 - **Output**: softmax over two classes (spoof / live); index 1 is the live score
-- **Decision**: the two live scores are averaged and compared against a threshold (`0.972`); both crops must agree the face is real
+- **Decision**: the two live scores are averaged and compared against a threshold (`0.972`); if one model cannot produce a valid crop it is skipped, but if both fail the check is rejected
 - **Runtime**: ONNX Runtime for Android (`onnxruntime-android:1.24.2`)
-- **Inference**: runs every 500ms together with face attribute classification; result is cached and applied every frame to block capture
+- **Inference**: runs every 300ms together with face attribute classification; requires 2 consecutive failures before blocking capture
 
 
 ## Data Storage

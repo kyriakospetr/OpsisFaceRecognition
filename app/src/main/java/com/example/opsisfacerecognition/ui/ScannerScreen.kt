@@ -437,12 +437,16 @@ private fun getScannerStatus(uiState: FaceUiState): ScannerStatus =
         Detection.EyesNotOpen -> ScannerStatus("Please open both eyes.", MessageTone.Attention)
         Detection.WearingGlasses -> ScannerStatus("Please remove glasses to continue.", MessageTone.Attention)
         Detection.WearingHat -> ScannerStatus("Please remove hat to continue.", MessageTone.Attention)
+        Detection.TooClose -> ScannerStatus("Too close. Move further away.", MessageTone.Attention)
         Detection.SpoofDetected -> ScannerStatus("Liveness check failed. Use your real face.", MessageTone.Attention)
 
         Detection.NoFace,
-        Detection.CenterFace,
-        Detection.LookStraight,
-        Detection.MoveCloser -> ScannerStatus("Center your face in the oval.", MessageTone.Neutral)
+        Detection.CenterFace -> ScannerStatus("Center your face in the oval.", MessageTone.Neutral)
+        Detection.TooFar,
+        Detection.MoveCloser -> ScannerStatus("Move closer to the camera.", MessageTone.Neutral)
+        Detection.LookStraight -> ScannerStatus("Don't look sideways.", MessageTone.Neutral)
+        Detection.LookStraightAhead -> ScannerStatus("Look straight ahead.", MessageTone.Neutral)
+        Detection.DontTiltHead -> ScannerStatus("Don't tilt your head.", MessageTone.Neutral)
 
         Detection.MultipleFaces -> ScannerStatus("One face only.", MessageTone.Error)
         Detection.ImproveFocus -> ScannerStatus("Image is blurry. Try again.", MessageTone.Error)
