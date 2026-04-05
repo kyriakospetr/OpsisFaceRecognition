@@ -24,3 +24,4 @@ local.properties
 *.hprof
 proguard/
 app/release/
+venv/

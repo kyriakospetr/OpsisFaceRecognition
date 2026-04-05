@@ -1,0 +1,75 @@
+@startuml
+title Διαδικασία Επαλήθευσης Ταυτότητας
+
+skinparam activity {
+  BackgroundColor #EAFAF1
+  BorderColor     #1D6A39
+  FontSize        13
+  FontName        Arial
+}
+skinparam activityDiamond {
+  BackgroundColor #D5F5E3
+  BorderColor     #1D6A39
+}
+skinparam arrow {
+  Color #1D6A39
+}
+skinparam note {
+  BackgroundColor #FEF9E7
+  BorderColor     #F0B27A
+}
+skinparam backgroundColor #FFFFFF
+
+start
+
+:Είσοδος Εικόνας\n(Κάμερα)]
+
+:Ανίχνευση Προσώπου\n(ML Kit Face Detection);
+
+if (Εντοπίστηκε\nένα πρόσωπο;) then (Όχι)
+  :Ανατροφοδότηση\nστον χρήστη;
+  stop
+endif
+
+:Έλεγχοι Ποιότητας
+──────────────────
+• Κεντράρισμα & μέγεθος
+• Στροφή κεφαλής
+• Ανοιχτά μάτια
+• Ανίχνευση γυαλιών / καπέλου
+• Έλεγχος liveness (SilentFace)
+• Ευκρίνεια πλαισίου;
+
+if (Όλοι οι έλεγχοι\nεπιτυχείς;) then (Όχι)
+  :Ανατροφοδότηση\nστον χρήστη;
+  stop
+endif
+
+:Συλλογή 4 ευθυγραμμισμένων\nδειγμάτων προσώπου (112×112);
+
+note right
+  Ένα δείγμα κάθε 100 ms
+  Σύνολο: 4 δείγματα
+end note
+
+:Εξαγωγή Διανύσματος Χαρακτηριστικών
+(MobileFaceNet · 128 διαστάσεις)
+ανά δείγμα × 4;
+
+:Μέσος Όρος 4 Διανυσμάτων\n→ L2 Κανονικοποίηση\n→ Τελικό Embedding Ερωτήματος;
+
+:Σύγκριση με Αποθηκευμένα\nEmbeddings (Cosine Similarity);
+
+note right
+  Κατώφλι αποδοχής: 0.82
+end note
+
+if (Καλύτερη ομοιότητα\n>= 0.82;) then (Ναι)
+  :Επαλήθευση Επιτυχής\n✓ Ταυτότητα Αναγνωρίστηκε;
+else (Όχι)
+  :Επαλήθευση Απέτυχε\n✗ Άγνωστο Πρόσωπο;
+endif
+
+stop
+
+@enduml

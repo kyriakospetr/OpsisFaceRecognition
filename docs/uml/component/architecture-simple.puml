@@ -1,0 +1,29 @@
+@startuml
+title Αρχιτεκτονική Εφαρμογής – Clean Architecture
+
+skinparam rectangle {
+  RoundCorner 12
+  FontSize 13
+  FontName Arial
+}
+skinparam arrow {
+  Color #2C3E50
+  FontSize 11
+}
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+
+rectangle "UI\n(Compose Screens)" as UI #AED6F1
+rectangle "ViewModel" as VM #D2B4DE
+rectangle "Domain\n(Use Cases / Repository)" as Domain #A9DFBF
+rectangle "Data\n(Room DB / Repository Impl)" as Data #FAD7A0
+
+UI    -down->  VM     : events / actions
+VM    -down->  Domain : calls use cases
+Domain -down-> Data   : reads / writes
+
+Data   -up->   Domain : results / entities
+Domain -up->   VM     : domain models
+VM     -up->   UI     : UI state (StateFlow)
+
+@enduml

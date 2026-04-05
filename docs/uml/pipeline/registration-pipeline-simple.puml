@@ -1,0 +1,65 @@
+@startuml
+title Διαδικασία Εγγραφής Προσώπου
+
+skinparam activity {
+  BackgroundColor #EBF5FB
+  BorderColor     #1A5276
+  FontSize        13
+  FontName        Arial
+}
+skinparam activityDiamond {
+  BackgroundColor #D6EAF8
+  BorderColor     #1A5276
+}
+skinparam arrow {
+  Color #1A5276
+}
+skinparam note {
+  BackgroundColor #FEF9E7
+  BorderColor     #F0B27A
+}
+skinparam backgroundColor #FFFFFF
+
+start
+
+:Είσοδος Εικόνας απο την κάμερα]
+
+:Ανίχνευση Προσώπου;
+
+if (Εντοπίστηκεένα πρόσωπο;) then (Όχι)
+  :Μήνυμα στον χρήστη;
+  stop
+endif
+
+:Έλεγχοι Ποιότητας
+──────────────────
+• Κεντράρισμα & μέγεθος
+• Γωνίες προσώπου
+• Ανοιχτά μάτια
+• Ανίχνευση γυαλιών / καπέλου
+• Έλεγχος ζωντάνιας
+• Έλεγχος θέσης;
+
+if (Όλοι οι έλεγχοι επιτυχείς;) then (Όχι)
+  :Μήνυμα στον χρήστη;
+  stop
+endif
+
+:Συλλογή 4 ευθυγραμμισμένων δειγμάτων προσώπου;
+
+note right
+  Ένα δείγμα κάθε 100 ms
+  Σύνολο: 4 δείγματα
+end note
+
+:Εξαγωγή Διανύσματος Χαρακτηριστικών ανά δείγμα × 4;
+
+:Μέσος Όρος 4 Διανυσμάτων → Τελική Ενσωμάτωση;
+
+:Εισαγωγή Ονόματος Χρήστη;
+
+:Αποθήκευση Ενσωμάτωσης στη Βάση Δεδομένων;
+
+stop
+
+@enduml

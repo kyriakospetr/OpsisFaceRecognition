@@ -31,10 +31,10 @@ class FaceAnalyzer(
 
     companion object {
         private const val POSITION_TOLERANCE = 0.5f // How much we tolerate the user to be away from oval's center
-        private const val MIN_FACE_SIZE_RATIO = 0.8f // The minimum face we need
+        private const val MIN_FACE_SIZE_RATIO = 0.8f // The minimum face size we need
         private const val MAX_ROTATION_DEGREES = 12f // How much we allow the face to be rotated
         private const val STABILITY_DURATION_MS = 600L // How many ms the face has to stay stable
-        private const val TARGET_SAMPLES = 4 // How many bitmaps to capture
+        private const val TARGET_SAMPLES = 2 // How many bitmaps to capture
         private const val SAMPLE_INTERVAL_MS = 100L // How many seconds we pause before taking another sample
         private const val BLUR_VARIANCE_THRESHOLD = 220.0 // Threshold to determine if an image is blurry or not
         private const val MIN_EYE_DISTANCE_PX = 25f // Minimum distance between 2 eyes
@@ -109,7 +109,7 @@ class FaceAnalyzer(
     @OptIn(ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {
         // If we have finished, close and return
-        if (session.isCaptureComplete) {
+        if (synchronized(session) { session.isCaptureComplete }) {
             imageProxy.close()
             return
         }
@@ -164,18 +164,19 @@ class FaceAnalyzer(
     }
 
     private fun processDetectedFaces(faces: List<Face>, mapping: CoordinateMapping, imageProxy: ImageProxy, rotationDegrees: Int) {
-        val now = SystemClock.elapsedRealtime()
+        synchronized(session) {
+            val now = SystemClock.elapsedRealtime()
 
-        val singleFace = extractSingleFaceOrEmitFeedback(faces, now) ?: return
+            val singleFace = extractSingleFaceOrEmitFeedback(faces, now) ?: return
+            if (!isFacePositionAndPoseValid(singleFace, mapping, now)) {
+                // Single face exists, but it failed quality/position checks.
+                // The specific feedback was already emitted.
+                session.resetCaptureState()
+                return
+            }
 
-        if (!isFacePositionAndPoseValid(singleFace, mapping, now)) {
-            // Single face exists, but it failed quality/position checks.
-            // The specific feedback was already emitted.
-            session.resetCaptureState()
-            return
+            handleFaceCapture(singleFace, imageProxy, rotationDegrees)
         }
-
-        handleFaceCapture(singleFace, imageProxy, rotationDegrees)
     }
 
     private fun extractSingleFaceOrEmitFeedback(faces: List<Face>, now: Long): Face? {
@@ -378,7 +379,7 @@ class FaceAnalyzer(
         // CameraX delivers frames rotated (e.g. 90°) — this corrects the orientation
         // so the face appears straight. If no rotation is needed (0°), returns the original bitmap.
         val src = imageProxy.toBitmap()
-        if (rotationDegrees % 360 == 0) return src
+        if (rotationDegrees % 360 == 0) return src.copy(src.config ?: Bitmap.Config.ARGB_8888, false).also { src.recycle() }
         val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
         val srcBounds = RectF(0f, 0f, src.width.toFloat(), src.height.toFloat())
         val dstBounds = RectF(srcBounds)

@@ -30,7 +30,7 @@ An Android face recognition app built with Jetpack Compose.
 
 The app opens the camera, detects a face with ML Kit, and when conditions are good it:
 
-- captures 4 face samples
+- captures 2 face samples
 - computes an embedding with MobileFaceNet (`mobilefacenet.tflite`)
 - stores the embedding and name in Room DB
 
@@ -95,7 +95,7 @@ Before accepting samples, the analyzer checks:
 - passive liveness check (via on-device SilentFace ONNX models)
 - anti-blur check (Laplacian variance)
 
-Then it captures 4 samples and computes average embedding + L2 normalization.
+Then it captures 2 samples and computes average embedding + L2 normalization.
 
 ## Face Attribute Classification
 

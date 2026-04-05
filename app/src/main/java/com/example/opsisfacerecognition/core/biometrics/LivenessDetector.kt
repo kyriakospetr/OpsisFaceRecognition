@@ -50,7 +50,7 @@ class LivenessDetector @Inject constructor(
             // Crop the face region at the given scale and resize to 80x80
             val scale = CROP_SCALES[index]
             val crop = cropAndScale(upright, boundingBox, scale)
-                ?: return LivenessResult(isLive = true, score = 1f)
+                ?: return LivenessResult(isLive = false, score = 0f)
             liveSum += runCatching { infer(session, crop) }.getOrDefault(0f)
             crop.recycle()
         }
