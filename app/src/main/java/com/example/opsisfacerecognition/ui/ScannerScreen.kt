@@ -415,7 +415,7 @@ fun StatusBanner(
                 text = text,
                 style = MaterialTheme.typography.labelLarge,
                 color = contentColor,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
         }

@@ -33,7 +33,7 @@ class FaceSampleCollector(
     private val facePixels = faceSize * faceSize
 
     // We pause a bit after a successful capture.
-    // We do not immediately start capturing 4 pictures.
+    // We do not immediately start capturing all samples.
     fun shouldCaptureSample(currentTime: Long, session: FaceCaptureSessionState): Boolean {
         return currentTime - session.lastSampleTimeMs >= sampleIntervalMs
     }

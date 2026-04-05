@@ -25,12 +25,7 @@ class VerifyUserUseCase @Inject constructor(
                 user to faceNetLiteRT.cosineSimilarity(embedding, user.embedding)
             }
 
-        allScores.forEach { (user, score) ->
-            android.util.Log.d("Verify", "user=${user.fullName} similarity=${"%.6f".format(score)}")
-        }
-
         val (bestUser, bestScore) = allScores.maxByOrNull { it.second } ?: return null
-        android.util.Log.d("Verify", "bestMatch=${bestUser.fullName} score=${"%.6f".format(bestScore)} threshold=$VERIFICATION_THRESHOLD accepted=${bestScore >= VERIFICATION_THRESHOLD}")
 
         // Accept only if similarity is high enough
         return if (bestScore >= VERIFICATION_THRESHOLD) {

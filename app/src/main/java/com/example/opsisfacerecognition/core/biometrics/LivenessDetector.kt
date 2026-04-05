@@ -59,13 +59,11 @@ class LivenessDetector @Inject constructor(
 
         // If no model could produce a crop, reject — do not grant access
         if (validModels == 0) {
-            android.util.Log.w("Liveness", "No valid crops produced — rejecting")
             return LivenessResult(isLive = false, score = 0f)
         }
 
         // Average the live score from models that succeeded
         val avg = liveSum / validModels
-        android.util.Log.d("Liveness", "score=${"%.6f".format(avg)} models=$validModels/${ sessions.size} threshold=$LIVENESS_THRESHOLD isLive=${avg >= LIVENESS_THRESHOLD}")
         return LivenessResult(isLive = avg >= LIVENESS_THRESHOLD, score = avg)
     }
 

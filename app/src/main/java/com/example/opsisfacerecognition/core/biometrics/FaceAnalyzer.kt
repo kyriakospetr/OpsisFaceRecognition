@@ -171,7 +171,7 @@ class FaceAnalyzer(
     }
 
     private fun processDetectedFaces(faces: List<Face>, mapping: CoordinateMapping, imageProxy: ImageProxy, rotationDegrees: Int) {
-        // Phase 1 (synchronized): lightweight session-state validation
+        // lightweight session-state validation
         val face: Face
         val currentTime: Long
         val needsAttributeCheck: Boolean
@@ -217,7 +217,7 @@ class FaceAnalyzer(
             needsSample = isStable && sampleCollector.shouldCaptureSample(currentTime, session)
         }
 
-        // Phase 2 (no lock): attribute/liveness checks run during stability AND capture
+        // attribute/liveness checks run during stability AND capture
         val upright = if (needsAttributeCheck || needsSample) extractUprightBitmap(imageProxy, rotationDegrees) else null
 
         // Check if the face is too close to the camera for reliable liveness/attribute crops
@@ -274,7 +274,7 @@ class FaceAnalyzer(
             return
         }
 
-        // Phase 3 (synchronized): sample capture mutates session state
+        // sample capture mutates session state
         synchronized(session) {
             if (session.isCaptureComplete) {
                 upright.recycle()

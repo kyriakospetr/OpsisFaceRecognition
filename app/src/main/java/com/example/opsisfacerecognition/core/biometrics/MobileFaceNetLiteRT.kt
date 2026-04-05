@@ -12,6 +12,7 @@ import org.tensorflow.lite.DataType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.sqrt
 
 @Singleton
 class MobileFaceNetLiteRT @Inject constructor(
@@ -52,7 +53,7 @@ class MobileFaceNetLiteRT @Inject constructor(
             sum += v * v
         }
 
-        val norm = kotlin.math.sqrt(sum)
+        val norm = sqrt(sum)
         if (norm < 1e-10f) return vector.copyOf()
 
         return FloatArray(vector.size) { i -> vector[i] / norm }

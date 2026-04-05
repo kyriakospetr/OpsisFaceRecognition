@@ -66,8 +66,6 @@ class FaceAttributeClassifier @Inject constructor(
         // index 0 = glasses probability, index 1 = hat probability
         val glassesProb = if (output.isNotEmpty()) output[0] else 0f
         val hatProb = if (output.size > 1) output[1] else 0f
-        android.util.Log.d("FaceAttr", "glasses=${"%.4f".format(glassesProb)} hat=${"%.4f".format(hatProb)}")
-
         return FaceAttributeResult(
             hasGlasses = glassesProb >= GLASSES_THRESHOLD,
             hasHat = hatProb >= HAT_THRESHOLD
