@@ -11,6 +11,7 @@ class FaceValidation(
     private val positionTolerance: Float,
     private val minFaceSizeRatio: Float,
     private val maxRotationDegrees: Float,
+    private val maxPitchDegrees: Float,
     private val minEyeDistancePx: Float,
     private val maxCenterSpeedPxPerSecond: Float
 ) {
@@ -39,8 +40,8 @@ class FaceValidation(
     fun checkFaceOrientation(face: Face): OrientationCheckResult {
         // Yaw: looking left or right
         if (abs(face.headEulerAngleY) > maxRotationDegrees) return OrientationCheckResult.LOOK_STRAIGHT
-        // Pitch: looking up or down
-        if (abs(face.headEulerAngleX) > maxRotationDegrees) return OrientationCheckResult.LOOK_STRAIGHT_AHEAD
+        // Pitch: looking up or down (more lenient — users naturally look slightly down at their phone)
+        if (abs(face.headEulerAngleX) > maxPitchDegrees) return OrientationCheckResult.LOOK_STRAIGHT_AHEAD
         // Roll: head tilted sideways
         if (abs(face.headEulerAngleZ) > maxRotationDegrees) return OrientationCheckResult.DONT_TILT
         return OrientationCheckResult.OK

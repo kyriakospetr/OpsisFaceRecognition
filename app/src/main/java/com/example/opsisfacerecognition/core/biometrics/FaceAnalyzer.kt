@@ -31,12 +31,13 @@ class FaceAnalyzer(
 
     companion object {
         private const val POSITION_TOLERANCE = 0.5f // How much we tolerate the user to be away from oval's center
-        private const val MIN_FACE_SIZE_RATIO = 0.55f // The minimum face size we need
-        private const val MAX_ROTATION_DEGREES = 12f // How much we allow the face to be rotated
-        private const val STABILITY_DURATION_MS = 800L // How many ms the face has to stay stable
+        private const val MIN_FACE_SIZE_RATIO = 0.45f // The minimum face size we need
+        private const val MAX_ROTATION_DEGREES = 15f // How much we allow the face to be rotated (yaw/roll)
+        private const val MAX_PITCH_DEGREES = 20f // More lenient for pitch — users naturally look slightly down
+        private const val STABILITY_DURATION_MS = 600L // How many ms the face has to stay stable
         private const val TARGET_SAMPLES = 3 // How many bitmaps to capture
         private const val SAMPLE_INTERVAL_MS = 350L // Pause between samples for real variation
-        private const val BLUR_VARIANCE_THRESHOLD = 220.0 // Threshold to determine if an image is blurry or not
+        private const val BLUR_VARIANCE_THRESHOLD = 160.0 // Threshold to determine if an image is blurry or not
         private const val MIN_EYE_DISTANCE_PX = 18f // Minimum distance between 2 eyes
         private const val MAX_CENTER_SPEED_PX_PER_SECOND = 2000f // The max speed the face should be moving
         private const val MIN_EYE_DISTANCE_FOR_ALIGNMENT = 10f // The minimum distance where we perform face alignment
@@ -96,6 +97,7 @@ class FaceAnalyzer(
         positionTolerance = POSITION_TOLERANCE,
         minFaceSizeRatio = MIN_FACE_SIZE_RATIO,
         maxRotationDegrees = MAX_ROTATION_DEGREES,
+        maxPitchDegrees = MAX_PITCH_DEGREES,
         minEyeDistancePx = MIN_EYE_DISTANCE_PX,
         maxCenterSpeedPxPerSecond = MAX_CENTER_SPEED_PX_PER_SECOND
     )
@@ -185,7 +187,8 @@ class FaceAnalyzer(
             if (!isFacePositionAndPoseValid(singleFace, mapping, now)) {
                 // Single face exists, but it failed quality/position checks.
                 // The specific feedback was already emitted.
-                resetAllState()
+                // Keep tracking ID so we don't restart from scratch on the next frame.
+                resetCaptureProgress()
                 return
             }
 
@@ -327,6 +330,22 @@ class FaceAnalyzer(
 
     private fun resetAllState() {
         session.resetCaptureState()
+        resetAttributeCounters()
+    }
+
+    private fun resetCaptureProgress() {
+        // Reset capture progress but keep the tracking ID so we don't
+        // discard frames when the same face briefly fails a pose check.
+        session.stabilityStartTimeMs = null
+        session.lastSampleTimeMs = 0L
+        session.capturedBitmaps.forEach { it.recycle() }
+        session.capturedBitmaps.clear()
+        session.lastFaceCenter = null
+        session.lastCenterUpdateTimeMs = 0L
+        resetAttributeCounters()
+    }
+
+    private fun resetAttributeCounters() {
         consecutiveGlassesFailures = 0
         consecutiveHatFailures = 0
         consecutiveLivenessFailures = 0

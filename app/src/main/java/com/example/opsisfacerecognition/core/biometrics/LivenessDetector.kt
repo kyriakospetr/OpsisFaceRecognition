@@ -21,7 +21,7 @@ class LivenessDetector @Inject constructor(
 ) : AutoCloseable {
     companion object {
         private const val MODEL_INPUT_SIZE = 80 // Silentface models expect 80x80 input
-        private const val LIVENESS_THRESHOLD = 0.972017f // Minimum score to consider a face as live (from KeylessTech reference)
+        private const val LIVENESS_THRESHOLD = 0.94f // Minimum score to consider a face as live
         private val MODEL_FILES  = listOf("silentface40.onnx", "silentface27.onnx") // Two models operating at different scales for more robust detection
         private val CROP_SCALES  = floatArrayOf(4.0f, 2.7f) // Each model sees the face at a different zoom level (wider vs tighter crop)
     }
