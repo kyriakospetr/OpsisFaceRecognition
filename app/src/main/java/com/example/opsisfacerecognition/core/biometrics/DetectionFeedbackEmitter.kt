@@ -5,7 +5,7 @@ import javax.inject.Inject
 
 class DetectionFeedbackEmitter @Inject constructor() {
     companion object {
-        private const val FEEDBACK_SWITCH_COOLDOWN_MS = 300L
+        private const val FEEDBACK_SWITCH_COOLDOWN_MS = 800L
     }
     private var lastFeedback: Detection? = null
     private var lastFeedbackTimeMs: Long = 0L

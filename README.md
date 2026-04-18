@@ -54,7 +54,6 @@ app/
 │   ├── config/             Scanner geometry / tuning constants
 │   ├── permissions/        Declarative camera permission requester
 │   ├── states/             FaceUiState, FaceFlowMode, SettingsUiState
-│   └── ui/                 Shared Compose components, dialogs, adaptive layout
 ├── domain/
 │   ├── model/              Pure Kotlin models (User)
 │   ├── repository/         Repository contracts
@@ -74,13 +73,13 @@ PlantUML diagrams (architecture, sequences, ER, ML pipeline, state machine) live
 Each camera frame passes through `FaceAnalyzer`, which delegates to single-responsibility collaborators and short-circuits as soon as a gate fails.
 
 1. **Detection** – ML Kit returns faces with landmarks, head Euler angles, and a tracking ID.
-2. **Framing** – A single face must be centred inside the on-screen oval with `faceWidth` within `[0.45, 1.80] × ovalRadiusX`.
+2. **Framing** – A single face must be centred inside the on-screen oval with `faceWidth` within `[0.45, 2.20] × ovalRadiusX`.
 3. **Pose** – Yaw/roll ≤ 15°, pitch ≤ 20° (pitch is more lenient because users look slightly down at their phone).
 4. **Identity continuity** – The ML Kit tracking ID must persist across frames; a change resets capture state to avoid mixing samples from two people.
 5. **Eye openness** – Both eyes ≥ 0.40 probability.
 6. **Stability** – The face must hold a valid state for 600 ms before capture begins.
 7. **Attribute hygiene** – A MobileNetV2 head predicts `[glasses, hat]`. Two consecutive positive readings (sampled every 300 ms) block capture.
-8. **Passive liveness** – Two SilentFace models (80×80 CHW, scale 4.0× and 2.7×) score the frame in parallel; their live probabilities are averaged and thresholded at 0.94. Two consecutive failures block capture.
+8. **Passive liveness** – Two SilentFace models (80×80 CHW, scale 4.0× and 2.7×) score the frame in parallel, their live probabilities are averaged and thresholded at 0.97. Two consecutive failures block capture.
 9. **Alignment & blur** – The candidate frame is warped with a similarity transform so the eyes land on fixed coordinates in a 112×112 crop. A single-pass Laplacian variance (> 160) rejects motion blur.
 10. **Capture** – Three aligned crops are accumulated at 350 ms intervals.
 11. **Embedding** – Each crop is embedded with MobileFaceNet; vectors are L2-normalised, averaged, and re-normalised.
@@ -109,7 +108,7 @@ Training notebook: `ml/train_face_attributes.ipynb` (Google Colab).
 - **Models:** `silentface40.onnx` (wider crop, scale 4.0×) and `silentface27.onnx` (tighter crop, scale 2.7×), run as an ensemble.
 - **Input:** 80×80 RGB, CHW layout, raw `[0, 255]` pixel values.
 - **Output:** softmax over `{spoof, live}`; live probabilities are averaged across both models.
-- **Decision:** `average ≥ 0.94`. If one model cannot produce a valid crop (e.g. the bounding box is too close to the frame edge) it is skipped; if both fail, the check is rejected.
+- **Decision:** `average ≥ 0.97`. Both models must produce a valid crop — if either fails (e.g. the bounding box is too close to the frame edge), the check is rejected. The dual-scale ensemble is the whole point, so we don't silently fall back to a single model on a security check.
 - **Runtime:** ONNX Runtime for Android 1.24.2 with NNAPI execution provider, falling back to CPU silently.
 
 ## Security & Data
@@ -117,14 +116,14 @@ Training notebook: `ml/train_face_attributes.ipynb` (Google Colab).
 - **Templates only:** raw images never leave the camera thread; only averaged, L2-normalised 128-d embeddings are persisted.
 - **Encrypted database:** Room over SQLCipher (`app.db`), schema: `users(localId, userId, fullName, embedding: ByteArray)`.
 - **Passphrase management:** a 32-byte passphrase is generated on first launch with `SecureRandom`, encrypted with an AES/GCM 256-bit key that lives in `AndroidKeyStore`, and stored as ciphertext + IV in private `SharedPreferences`. The raw key is never exportable.
-- **No backend:** everything is local; the app has no internet permission in its manifest beyond what CameraX and ML Kit require.
+- **No backend:** everything is local, the app has no internet permission in its manifest beyond what CameraX and ML Kit require.
 
 ## User Flow
 
 1. From Home, pick **Add your face** or **Verify identity**.
 2. Grant camera permission (rationale and settings fallbacks are handled declaratively).
 3. The scanner guides the user with granular feedback ("center your face", "don't tilt your head", "remove glasses", …) until a valid capture window is reached.
-4. On enrol, the user enters a full name; duplicates are rejected.
+4. On enroll, the user enters a full name; duplicates are rejected.
 5. On verify, the best-matching user is returned when the cosine similarity crosses the threshold.
 6. Settings allows single-user deletion or a full wipe.
 
@@ -135,12 +134,13 @@ Centralised for easy calibration:
 | Constant | Value | Location |
 |---|---|---|
 | Verification threshold | `0.82` | `VerifyUserUseCase` |
-| Liveness threshold | `0.94` | `LivenessDetector` |
+| Liveness threshold | `0.97` | `LivenessDetector` |
 | Attribute thresholds | `0.50` | `FaceAttributeClassifier` |
 | Stability duration | `600 ms` | `FaceAnalyzer` |
 | Attribute/liveness cadence | `300 ms` | `FaceAnalyzer` |
 | Consecutive failures required | `2` | `FaceAnalyzer` |
 | Blur variance threshold | `160` | `FaceSampleCollector` |
+| Feedback switch cooldown | `800 ms` | `DetectionFeedbackEmitter` |
 | Yaw / roll / pitch limits | `15° / 15° / 20°` | `FaceValidation` |
 | Target samples per capture | `3` | `FaceSampleCollector` |
 | Aligned crop size | `112×112` | `FaceSampleCollector` |

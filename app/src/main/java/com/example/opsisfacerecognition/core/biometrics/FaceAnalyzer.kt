@@ -175,7 +175,13 @@ class FaceAnalyzer @AssistedInject constructor(
 
             emitDetection(Detection.FaceDetected, currentTime)
 
-            if (!needsSample) {
+            // Silent capture gate: even below the consecutive-failure threshold,
+            // don't accumulate samples while the latest check is unclean.
+            val latestCheckClean = session.lastLivenessResult.isLive &&
+                !session.lastAttributeResult.hasGlasses &&
+                !session.lastAttributeResult.hasHat
+
+            if (!needsSample || !latestCheckClean) {
                 return
             }
 

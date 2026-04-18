@@ -12,7 +12,7 @@ class FaceValidation @Inject constructor() {
     companion object {
         private const val POSITION_TOLERANCE = 0.5f
         private const val MIN_FACE_SIZE_RATIO = 0.45f
-        private const val MAX_FACE_SIZE_RATIO = 1.80f
+        private const val MAX_FACE_SIZE_RATIO = 2.20f
 
         private const val MAX_ROTATION_DEGREES = 15f
         private const val MAX_PITCH_DEGREES = 20f
@@ -37,7 +37,6 @@ class FaceValidation @Inject constructor() {
         if (faceWidth > (ovalRadiusX * MAX_FACE_SIZE_RATIO)) {
             return OvalCheckResult.TOO_CLOSE
         }
-
         return OvalCheckResult.OK
     }
 

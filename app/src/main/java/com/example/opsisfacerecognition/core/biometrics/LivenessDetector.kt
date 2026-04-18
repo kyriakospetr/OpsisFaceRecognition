@@ -20,7 +20,7 @@ class LivenessDetector @Inject constructor(
 ) : AutoCloseable {
     companion object {
         private const val MODEL_INPUT_SIZE = 80 // Silentface models expect 80x80 input
-        private const val LIVENESS_THRESHOLD = 0.94f // Minimum score to consider a face as live
+        private const val LIVENESS_THRESHOLD = 0.97f // Minimum score to consider a face as live
         private val MODEL_FILES  = listOf("silentface40.onnx", "silentface27.onnx")
         private val CROP_SCALES  = floatArrayOf(4.0f, 2.7f)
     }
@@ -43,24 +43,19 @@ class LivenessDetector @Inject constructor(
     // boundingBox: the face bounding box from ML Kit
     fun check(upright: Bitmap, boundingBox: Rect): LivenessResult {
         var liveSum = 0f
-        var validModels = 0
         sessions.forEachIndexed { index, session ->
-            // Crop the face region at the given scale and resize to 80x80
+            // Crop the face region at the given scale and resize to 80x80.
+            // If any model cannot produce a valid crop, reject — the ensemble
+            // is the whole point, we don't fall back to a single model.
             val scale = CROP_SCALES[index]
-            val crop = cropAndScale(upright, boundingBox, scale) ?: return@forEachIndexed
+            val crop = cropAndScale(upright, boundingBox, scale)
+                ?: return LivenessResult(isLive = false, score = 0f)
             val score = runCatching { infer(session, crop) }.getOrDefault(0f)
             crop.recycle()
             liveSum += score
-            validModels++
         }
 
-        // If no model could produce a crop, reject — do not grant access
-        if (validModels == 0) {
-            return LivenessResult(isLive = false, score = 0f)
-        }
-
-        // Average the live score from models that succeeded
-        val avg = liveSum / validModels
+        val avg = liveSum / sessions.size
         return LivenessResult(isLive = avg >= LIVENESS_THRESHOLD, score = avg)
     }
 

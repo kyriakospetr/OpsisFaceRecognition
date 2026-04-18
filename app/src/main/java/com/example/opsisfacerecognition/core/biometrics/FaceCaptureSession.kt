@@ -35,6 +35,9 @@ class FaceCaptureSession @Inject constructor() {
 
         // Reset the moved counters
         lastAttributeCheckTimeMs = 0L
+        lastAttributeResult = FaceAttributeClassifier.FaceAttributeResult(hasGlasses = false, hasHat = false)
+        lastLivenessResult = LivenessDetector.LivenessResult(isLive = true, score = 1f)
+
         consecutiveGlassesFailures = 0
         consecutiveHatFailures = 0
         consecutiveLivenessFailures = 0
