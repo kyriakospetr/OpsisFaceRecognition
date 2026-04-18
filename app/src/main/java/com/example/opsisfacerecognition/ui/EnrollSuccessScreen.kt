@@ -32,8 +32,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.opsisfacerecognition.app.ui.theme.bodyFontFamily
 import com.example.opsisfacerecognition.app.ui.theme.displayFontFamily
-import com.example.opsisfacerecognition.core.ui.components.StatusAvatar
-import com.example.opsisfacerecognition.core.ui.layout.AppScreenContainer
+import com.example.opsisfacerecognition.app.ui.components.StatusAvatar
+import com.example.opsisfacerecognition.app.ui.layout.AppScreenContainer
 import com.example.opsisfacerecognition.navigation.Routes
 import com.example.opsisfacerecognition.viewmodel.FaceRecognizerViewModel
 

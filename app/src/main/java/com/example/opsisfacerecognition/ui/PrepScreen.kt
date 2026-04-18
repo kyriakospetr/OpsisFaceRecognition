@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,7 +34,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -41,8 +41,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.opsisfacerecognition.app.ui.theme.bodyFontFamily
 import com.example.opsisfacerecognition.app.ui.theme.displayFontFamily
-import com.example.opsisfacerecognition.core.ui.dialogs.PermissionDialog
-import com.example.opsisfacerecognition.core.ui.layout.AppScreenContainer
+import com.example.opsisfacerecognition.app.ui.dialog.PermissionDialog
+import com.example.opsisfacerecognition.app.ui.layout.AppScreenContainer
 import com.example.opsisfacerecognition.core.permissions.rememberCameraPermissionRequester
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -134,7 +134,7 @@ fun PrepScreen(
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxWidth(0.95f)
-                    .height(300.dp)
+                    .aspectRatio(1f)
                     .align(Alignment.CenterHorizontally),
                 contentScale = ContentScale.Fit
             )

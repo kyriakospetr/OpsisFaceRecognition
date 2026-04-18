@@ -67,9 +67,9 @@ import com.example.opsisfacerecognition.core.config.FaceScannerConfig
 import com.example.opsisfacerecognition.core.states.FaceFlowMode
 import com.example.opsisfacerecognition.core.states.FaceUiState
 import com.example.opsisfacerecognition.core.states.FaceUiState.Detection
-import com.example.opsisfacerecognition.core.ui.components.CameraPreviewWithAnalysis
-import com.example.opsisfacerecognition.core.ui.components.OvalOverlay
-import com.example.opsisfacerecognition.core.ui.layout.AppScreenContainer
+import com.example.opsisfacerecognition.app.ui.components.CameraPreviewWithAnalysis
+import com.example.opsisfacerecognition.app.ui.components.OvalOverlay
+import com.example.opsisfacerecognition.app.ui.layout.AppScreenContainer
 import com.example.opsisfacerecognition.navigation.Routes
 import com.example.opsisfacerecognition.viewmodel.FaceRecognizerViewModel
 

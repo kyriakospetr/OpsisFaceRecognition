@@ -30,8 +30,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.opsisfacerecognition.app.ui.theme.bodyFontFamily
 import com.example.opsisfacerecognition.app.ui.theme.displayFontFamily
-import com.example.opsisfacerecognition.core.ui.components.StatusAvatar
-import com.example.opsisfacerecognition.core.ui.layout.AppScreenContainer
+import com.example.opsisfacerecognition.app.ui.components.StatusAvatar
+import com.example.opsisfacerecognition.app.ui.layout.AppScreenContainer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -5,174 +5,163 @@
 [![ML Kit Face Detection](https://img.shields.io/badge/ML%20Kit%20Face%20Detection-16.1.7-34A853?logo=google&logoColor=white)](https://developers.google.com/ml-kit/vision/face-detection)
 [![MobileFaceNet (TFLite)](https://img.shields.io/badge/MobileFaceNet-TFLite-FF6F00?logo=tensorflow&logoColor=white)](https://github.com/sirius-ai/MobileFaceNet_TF)
 [![MobileNetV2 (TFLite)](https://img.shields.io/badge/MobileNetV2-TFLite-FF6F00?logo=tensorflow&logoColor=white)](https://www.tensorflow.org/api_docs/python/tf/keras/applications/MobileNetV2)
-[![SilentFace (ONNX)](https://img.shields.io/badge/SilentFace-ONNX-005CED?logo=onnx&logoColor=white)](https://github.com/AliaksandrSiarohin/first-order-model)
+[![SilentFace (ONNX)](https://img.shields.io/badge/SilentFace-ONNX-005CED?logo=onnx&logoColor=white)](https://github.com/minivision-ai/Silent-Face-Anti-Spoofing)
 [![CameraX](https://img.shields.io/badge/CameraX-1.5.3-0F9D58?logo=android&logoColor=white)](https://developer.android.com/training/camerax)
 [![Hilt](https://img.shields.io/badge/Hilt-2.57.2-4285F4?logo=google&logoColor=white)](https://dagger.dev/hilt/)
-[![Room DB](https://img.shields.io/badge/Room-2.8.4-3DDC84?logo=android&logoColor=white)](https://developer.android.com/jetpack/androidx/releases/room)
+[![Room](https://img.shields.io/badge/Room-2.8.4-3DDC84?logo=android&logoColor=white)](https://developer.android.com/jetpack/androidx/releases/room)
+[![SQLCipher](https://img.shields.io/badge/SQLCipher-4.5.4-003B57?logo=sqlite&logoColor=white)](https://www.zetetic.net/sqlcipher/)
 
-An Android face recognition app built with Jetpack Compose.
-
-- Face enrollment
-- Face verification
-- Local embedding storage
-- User management from settings
-- On-device face attribute detection (glasses, hat)
-- Passive liveness detection (anti-spoofing)
+A fully on-device face recognition app for Android. Enrollment and verification run entirely on the device with no network calls. Biometric templates never leave local storage.
 
 <p float="left">
-  <img src="docs/screenshots/home.png" width="200"  alt=""/>
-  <img src="docs/screenshots/prep_enroll.png" width="200"  alt=""/>
-  <img src="docs/screenshots/prep_verify.png" width="200"  alt=""/>
-  <img src="docs/screenshots/settings.png" width="200"  alt=""/>
+  <img src="docs/screenshots/home.png" width="200" alt="Home"/>
+  <img src="docs/screenshots/prep_enroll.png" width="200" alt="Enrollment prep"/>
+  <img src="docs/screenshots/prep_verify.png" width="200" alt="Verification prep"/>
+  <img src="docs/screenshots/settings.png" width="200" alt="Settings"/>
 </p>
 
-## What The App Does
+## Highlights
 
-The app opens the camera, detects a face with ML Kit, and when conditions are good it:
+- **On-device biometric pipeline** combining ML Kit detection, MobileFaceNet embeddings (LiteRT), a custom attribute classifier (MobileNetV2 trained on CelebA), and a SilentFace anti-spoofing ensemble (ONNX Runtime).
+- **Encrypted local storage** with SQLCipher and an AES/GCM passphrase wrapped by a non-exportable Android Keystore key.
+- **Clean Architecture** (domain / data / ui), Hilt with Assisted Injection, state-driven UI via sealed `FaceUiState`, unidirectional data flow in Compose.
+- **Tablet-aware layout** through `WindowSizeClass` — gutters, max content width, and vertical centering adapt without duplicating screens.
+- **Explicit quality gates** before any embedding is stored: pose, framing, stability, eye openness, attribute hygiene, passive liveness, and Laplacian-variance blur rejection.
 
-- captures 3 face samples
-- computes an embedding with MobileFaceNet (`mobilefacenet.tflite`)
-- stores the embedding and name in Room DB
+## Technology Stack
 
-In verification mode, it:
+| Layer        | Choice |
+|--------------|--------|
+| UI           | Jetpack Compose (Material 3), Navigation Compose, Material3 Window Size Class |
+| Camera       | CameraX (`core`, `camera2`, `lifecycle`, `view`) |
+| Detection    | Google ML Kit Face Detection (accurate mode, classification, landmarks, tracking) |
+| Embedding    | MobileFaceNet via LiteRT + TensorFlow Lite Support |
+| Attributes   | Custom MobileNetV2 classifier (TFLite), GPU delegate with CPU fallback |
+| Liveness     | SilentFace dual-model ensemble (ONNX Runtime), NNAPI acceleration with CPU fallback |
+| Persistence  | Room 2.8.4 + SQLCipher 4.5.4 |
+| Security     | Android Keystore (AES/GCM, 256-bit, non-exportable) |
+| DI           | Hilt (KSP), Assisted Injection for the analyzer |
+| Target       | `minSdk 24`, `targetSdk 36`, `compileSdk 36`, JDK 11 |
 
-- computes an embedding from a new scan
-- compares it with all stored users (cosine similarity)
-- accepts the best match only if score is >= `verification_threshold` (currently `0.82`)
+## Architecture
 
-## Stack / Technologies
+```
+app/
+├── ui/                     Compose screens (Home, Prep, Scanner, Enroll, Success, Settings)
+├── core/
+│   ├── biometrics/         FaceAnalyzer, LiteRT, LivenessDetector, FaceAttributeClassifier,
+│   │                       FaceValidation, FaceSampleCollector, FaceCaptureSession
+│   ├── config/             Scanner geometry / tuning constants
+│   ├── permissions/        Declarative camera permission requester
+│   ├── states/             FaceUiState, FaceFlowMode, SettingsUiState
+│   └── ui/                 Shared Compose components, dialogs, adaptive layout
+├── domain/
+│   ├── model/              Pure Kotlin models (User)
+│   ├── repository/         Repository contracts
+│   └── usecase/            Enroll, Verify, ComputeEmbedding, ListUsers, Delete…
+├── data/
+│   ├── local/              Room DB, DAO, entities, passphrase provider
+│   └── repository/         UserRepositoryImpl
+├── di/                     Hilt modules (Biometrics, Database, Repository)
+├── navigation/             Routes + NavGraph
+└── viewmodel/              FaceRecognizerViewModel, SettingsViewModel
+```
 
-- Kotlin + Jetpack Compose (Material 3)
-- CameraX (`camera-core`, `camera-camera2`, `camera-lifecycle`, `camera-view`)
-- Google ML Kit Face Detection
-- LiteRT + TensorFlow Lite Support API (MobileFaceNet inference, face attribute classification)
-- ONNX Runtime for Android (passive liveness inference)
-- Room Database
-- SQLCipher (encrypted Room database)
-- Hilt (DI)
-- Navigation Compose
+PlantUML diagrams (architecture, sequences, ER, ML pipeline, state machine) live under `docs/uml/`.
 
-## Project Structure
+## Biometric Pipeline
 
-- `ui/`: app screens (Home, Prep, Scanner, Enroll, Success/Failed, Settings)
-- `core/`: camera preview, analyzer, scanner config, permission handling, shared UI components
-- `domain/`: models, repository contracts, use cases
-- `data/`: Room entities, DAO, repository implementation
-- `navigation/`: routes and nav graph
-- `viewmodel/`: UI state management for scanner and settings
+Each camera frame passes through `FaceAnalyzer`, which delegates to single-responsibility collaborators and short-circuits as soon as a gate fails.
 
-Main code points:
+1. **Detection** – ML Kit returns faces with landmarks, head Euler angles, and a tracking ID.
+2. **Framing** – A single face must be centred inside the on-screen oval with `faceWidth` within `[0.45, 1.80] × ovalRadiusX`.
+3. **Pose** – Yaw/roll ≤ 15°, pitch ≤ 20° (pitch is more lenient because users look slightly down at their phone).
+4. **Identity continuity** – The ML Kit tracking ID must persist across frames; a change resets capture state to avoid mixing samples from two people.
+5. **Eye openness** – Both eyes ≥ 0.40 probability.
+6. **Stability** – The face must hold a valid state for 600 ms before capture begins.
+7. **Attribute hygiene** – A MobileNetV2 head predicts `[glasses, hat]`. Two consecutive positive readings (sampled every 300 ms) block capture.
+8. **Passive liveness** – Two SilentFace models (80×80 CHW, scale 4.0× and 2.7×) score the frame in parallel; their live probabilities are averaged and thresholded at 0.94. Two consecutive failures block capture.
+9. **Alignment & blur** – The candidate frame is warped with a similarity transform so the eyes land on fixed coordinates in a 112×112 crop. A single-pass Laplacian variance (> 160) rejects motion blur.
+10. **Capture** – Three aligned crops are accumulated at 350 ms intervals.
+11. **Embedding** – Each crop is embedded with MobileFaceNet; vectors are L2-normalised, averaged, and re-normalised.
+12. **Decision**
+    - Enroll: store `{userId, fullName, embedding}`.
+    - Verify: cosine similarity against every stored template; accept if the best score ≥ `0.82`.
 
-- `app/src/main/java/com/example/opsisfacerecognition/core/biometrics/FaceAnalyzer.kt`
-- `app/src/main/java/com/example/opsisfacerecognition/core/biometrics/MobileFaceNetLiteRT.kt`
-- `app/src/main/java/com/example/opsisfacerecognition/core/biometrics/FaceAttributeClassifier.kt`
-- `app/src/main/java/com/example/opsisfacerecognition/core/biometrics/LivenessDetector.kt`
-- `app/src/main/java/com/example/opsisfacerecognition/viewmodel/FaceRecognizerViewModel.kt`
-- `app/src/main/java/com/example/opsisfacerecognition/viewmodel/SettingsViewModel.kt`
+All heavy work runs off the main thread; bitmaps are recycled in `finally` blocks to prevent leaks.
+
+## Face Attribute Classifier
+
+ML Kit does not expose glasses or hat detection, so a custom binary classifier was trained and deployed on-device.
+
+- **Dataset:** [CelebA](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html) (~202k aligned faces, 40 binary attributes).
+- **Attributes used:** `Eyeglasses`, `Wearing_Hat`.
+- **Architecture:** MobileNetV2 (ImageNet weights, frozen) → GlobalAveragePooling → Dense(128, ReLU) → Dropout(0.3) → Dense(2, Sigmoid).
+- **Input:** 96×96 RGB crop, normalised to `[0, 1]`.
+- **Output:** independent sigmoid probabilities; threshold 0.50 per attribute.
+- **Export:** converted to `face_attributes.tflite` and bundled under `assets/`.
+- **Runtime:** LiteRT with GPU accelerator, graceful CPU fallback if the delegate fails to initialise.
+
+Training notebook: `ml/train_face_attributes.ipynb` (Google Colab).
+
+## Passive Liveness
+
+- **Models:** `silentface40.onnx` (wider crop, scale 4.0×) and `silentface27.onnx` (tighter crop, scale 2.7×), run as an ensemble.
+- **Input:** 80×80 RGB, CHW layout, raw `[0, 255]` pixel values.
+- **Output:** softmax over `{spoof, live}`; live probabilities are averaged across both models.
+- **Decision:** `average ≥ 0.94`. If one model cannot produce a valid crop (e.g. the bounding box is too close to the frame edge) it is skipped; if both fail, the check is rejected.
+- **Runtime:** ONNX Runtime for Android 1.24.2 with NNAPI execution provider, falling back to CPU silently.
+
+## Security & Data
+
+- **Templates only:** raw images never leave the camera thread; only averaged, L2-normalised 128-d embeddings are persisted.
+- **Encrypted database:** Room over SQLCipher (`app.db`), schema: `users(localId, userId, fullName, embedding: ByteArray)`.
+- **Passphrase management:** a 32-byte passphrase is generated on first launch with `SecureRandom`, encrypted with an AES/GCM 256-bit key that lives in `AndroidKeyStore`, and stored as ciphertext + IV in private `SharedPreferences`. The raw key is never exportable.
+- **No backend:** everything is local; the app has no internet permission in its manifest beyond what CameraX and ML Kit require.
 
 ## User Flow
 
-1. From Home, choose `Start face scan` (enroll) or `Verify identity`.
-2. Grant camera permission.
-3. In scanner, follow instructions (center face, look straight, hold still).
-4. In enrollment, after capture, enter full name.
-5. If full name already exists, a conflict message is shown.
-6. In verification, the app matches against stored users.
-7. If verification succeeds, the matched user name is displayed.
-8. From Settings, delete one user or erase all stored data.
+1. From Home, pick **Add your face** or **Verify identity**.
+2. Grant camera permission (rationale and settings fallbacks are handled declaratively).
+3. The scanner guides the user with granular feedback ("center your face", "don't tilt your head", "remove glasses", …) until a valid capture window is reached.
+4. On enrol, the user enters a full name; duplicates are rejected.
+5. On verify, the best-matching user is returned when the cosine similarity crosses the threshold.
+6. Settings allows single-user deletion or a full wipe.
 
-## Scanner Quality Checks
+## Tuning Constants
 
-Before accepting samples, the analyzer checks:
+Centralised for easy calibration:
 
-- exactly one face
-- face inside the oval guide
-- near-straight orientation (yaw/pitch/roll up to ~12 degrees)
-- face not too close or too far from the camera
-- stability for ~800ms
-- sufficient eye distance
-- both eyes open
-- no eyeglasses or hat detected (via on-device `face_attributes.tflite` model)
-- passive liveness check (via on-device SilentFace ONNX models)
-- anti-blur check (Laplacian variance)
+| Constant | Value | Location |
+|---|---|---|
+| Verification threshold | `0.82` | `VerifyUserUseCase` |
+| Liveness threshold | `0.94` | `LivenessDetector` |
+| Attribute thresholds | `0.50` | `FaceAttributeClassifier` |
+| Stability duration | `600 ms` | `FaceAnalyzer` |
+| Attribute/liveness cadence | `300 ms` | `FaceAnalyzer` |
+| Consecutive failures required | `2` | `FaceAnalyzer` |
+| Blur variance threshold | `160` | `FaceSampleCollector` |
+| Yaw / roll / pitch limits | `15° / 15° / 20°` | `FaceValidation` |
+| Target samples per capture | `3` | `FaceSampleCollector` |
+| Aligned crop size | `112×112` | `FaceSampleCollector` |
 
-Then it captures 3 samples and computes average embedding + L2 normalization.
+## Build & Run
 
-## Face Attribute Classification
-
-ML Kit does not provide eyeglasses or hat detection. To enforce bare-face capture, a custom binary classifier was trained and deployed on-device.
-
-- **Dataset**: [CelebA](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html) (~202,000 aligned face images, 40 binary attributes)
-- **Attributes used**: `Eyeglasses`, `Wearing_Hat`
-- **Architecture**: MobileNetV2 (ImageNet weights, frozen) + GlobalAveragePooling + Dense(128, ReLU) + Dropout(0.3) + Dense(2, Sigmoid)
-- **Input**: 96×96 RGB face crop, normalized to [0, 1]
-- **Output**: `[glasses_prob, hat_prob]` — independent sigmoid probabilities
-- **Export**: converted to TFLite (`face_attributes.tflite`) and bundled in `assets/`
-- **Inference**: runs every 300ms on the face bounding box crop (during both stability and capture phases); requires 2 consecutive detections before blocking capture to filter transient lighting artifacts
-
-Training notebook: `ml/train_face_attributes.ipynb` (designed for Google Colab).
-
-## Passive Liveness Detection
-
-To prevent spoofing attacks (printed photos, screens, masks), a passive liveness check runs on every candidate frame before samples are accepted. No user action is required.
-
-- **Models**: two SilentFace ONNX models (`silentface40.onnx`, `silentface27.onnx`) run in parallel — one on a wider crop (scale 4.0×) and one on a tighter crop (scale 2.7×) of the face bounding box
-- **Input**: 80×80 RGB crop, raw pixel values [0, 255], CHW layout
-- **Output**: softmax over two classes (spoof / live); index 1 is the live score
-- **Decision**: the two live scores are averaged and compared against a threshold (`0.972`); if one model cannot produce a valid crop it is skipped, but if both fail the check is rejected
-- **Runtime**: ONNX Runtime for Android (`onnxruntime-android:1.24.2`)
-- **Inference**: runs every 300ms together with face attribute classification; requires 2 consecutive failures before blocking capture
-
-
-## Data Storage
-
-Encrypted Room DB (`app.db`) with SQLCipher, table `users`
-
-- `localId` (auto)
-- `userId` (UUID)
-- `fullName`
-- `embedding` (`FloatArray`, converted to `ByteArray`)
-
-Database passphrase is generated per install and protected via Android Keystore.
-
-No backend is used. Data stays locally on device.
-
-## Environment Requirements
-
-- Android Studio (latest stable recommended)
-- Android SDK with `minSdk = 24`, `targetSdk = 36`, `compileSdk = 36`
-- JDK 11
-
-## Build / Run
-
-From Android Studio:
-
-1. Open the project.
-2. Wait for Gradle Sync.
-3. Run on emulator or physical device with camera.
-
-From terminal:
+Prerequisites: Android Studio (latest stable), JDK 11, a device or emulator with a camera.
 
 ```bash
-./gradlew assembleDebug
+./gradlew assembleDebug      # build
+./gradlew installDebug       # install on a connected device
 ```
 
-To install on a connected device:
-
-```bash
-./gradlew installDebug
-```
+From Android Studio: open the project, let Gradle sync, run the `app` configuration.
 
 ## Tests
 
-Currently only basic template tests exist:
+Template unit and instrumented test stubs exist under `app/src/test/` and `app/src/androidTest/`. End-to-end coverage of the biometric pipeline and UI flows is intentionally out of scope for this release — the analyzer's collaborators (`FaceValidation`, `FaceSampleCollector`, `LivenessDetector`, `FaceAttributeClassifier`) are factored as pure, injectable units, which keeps them testable in follow-up work.
 
-- `app/src/test/.../ExampleUnitTest.kt`
-- `app/src/androidTest/.../ExampleInstrumentedTest.kt`
+## Notes & Limitations
 
-There is no full test coverage yet for biometrics and UI flows.
-
-## Important Notes
-
-- `verification_threshold` is currently `0.82` (in `VerifyUserUseCase`), based on initial self-tests, and needs further testing/calibration with more users.
-- Existing plaintext DB is reset once when encrypted DB is initialized (no migration strategy).
+- `verification_threshold = 0.82` is calibrated against a small in-house set. A larger enrollment corpus is needed to pin down the FAR/FRR curve.
+- SQLCipher migration on a pre-existing plaintext database is handled by a one-time reset — no schema upgrade path yet.
+- The classifier was trained on CelebA, which skews toward celebrity demographics. Fairness across skin tones and eyewear styles has not been formally evaluated.

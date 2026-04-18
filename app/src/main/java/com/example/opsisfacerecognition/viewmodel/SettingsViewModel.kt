@@ -7,12 +7,10 @@ import com.example.opsisfacerecognition.domain.usecase.DeleteAllUsersUseCase
 import com.example.opsisfacerecognition.domain.usecase.DeleteUserByLocalIdUseCase
 import com.example.opsisfacerecognition.domain.usecase.ListUsersUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -22,7 +20,6 @@ class SettingsViewModel @Inject constructor(
     private val deleteAllUsersUseCase: DeleteAllUsersUseCase
 ) : ViewModel() {
 
-    // Our state so our ui can access it
     private val _uiState = MutableStateFlow(SettingsUiState(isLoading = true))
     val uiState = _uiState.asStateFlow()
 
@@ -34,11 +31,9 @@ class SettingsViewModel @Inject constructor(
     fun loadUsers() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            // Instead of try-catch we use run catching
+
             runCatching {
-                withContext(Dispatchers.IO) {
-                    listUsersUseCase()
-                }
+                listUsersUseCase()
             }.onSuccess { users ->
                 _uiState.value = SettingsUiState(users = users, isLoading = false)
             }.onFailure { throwable ->
@@ -56,12 +51,10 @@ class SettingsViewModel @Inject constructor(
     fun deleteUser(localId: Long) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            // instead of try-catch we use run catching
+
             runCatching {
-                withContext(Dispatchers.IO) {
-                    deleteUserByLocalIdUseCase(localId)
-                    listUsersUseCase()
-                }
+                deleteUserByLocalIdUseCase(localId)
+                listUsersUseCase() // Immediately fetch the updated list
             }.onSuccess { users ->
                 _uiState.value = SettingsUiState(users = users, isLoading = false)
             }.onFailure { throwable ->
@@ -79,11 +72,9 @@ class SettingsViewModel @Inject constructor(
     fun eraseAll() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            // instead of try-catch we use run catching
+
             runCatching {
-                withContext(Dispatchers.IO) {
-                    deleteAllUsersUseCase()
-                }
+                deleteAllUsersUseCase()
             }.onSuccess {
                 _uiState.value = SettingsUiState(users = emptyList(), isLoading = false)
             }.onFailure { throwable ->

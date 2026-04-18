@@ -1,4 +1,4 @@
-package com.example.opsisfacerecognition.core.ui.dialogs
+package com.example.opsisfacerecognition.app.ui.dialog
 
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme

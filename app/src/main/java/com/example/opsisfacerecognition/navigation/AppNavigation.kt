@@ -62,9 +62,10 @@ fun AppNavigation() {
             )
         }
 
-        // We use navgraph so our viewmodel instance is alive
+        // We use navgraph so our view
+        // model instance is alive
         // We need the pending user from the face recognizer viewmodel
-        // Because we first take the embedding and then we ask for the full name
+        // Because we first take the embedding, and then we ask for the full name
         navigation(route = Routes.ENROLL_GRAPH, startDestination = Routes.ENROLL_SCAN) {
             composable(
                 route = Routes.ENROLL_SCAN,

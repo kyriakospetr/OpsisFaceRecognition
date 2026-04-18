@@ -10,9 +10,9 @@ import com.example.opsisfacerecognition.data.local.entity.UserEntity
 interface UserDao {
 
     @Query("SELECT * FROM users ORDER BY localId ASC")
-    fun getAll(): List<UserEntity>
+    suspend fun getAll(): List<UserEntity>
 
-    @Insert(onConflict = OnConflictStrategy.Companion.ABORT)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(user: UserEntity)
 
     @Query("SELECT * FROM users WHERE fullName = :fullName LIMIT 1")

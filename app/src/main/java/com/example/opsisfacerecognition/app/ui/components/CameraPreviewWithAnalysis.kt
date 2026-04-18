@@ -1,4 +1,4 @@
-package com.example.opsisfacerecognition.core.ui.components
+package com.example.opsisfacerecognition.app.ui.components
 
 import android.content.Context
 import android.util.Log

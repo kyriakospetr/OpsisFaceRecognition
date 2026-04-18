@@ -3,6 +3,7 @@ package com.example.opsisfacerecognition.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,7 +33,8 @@ import androidx.navigation.NavController
 import com.example.opsisfacerecognition.R
 import com.example.opsisfacerecognition.app.ui.theme.bodyFontFamily
 import com.example.opsisfacerecognition.app.ui.theme.displayFontFamily
-import com.example.opsisfacerecognition.core.ui.layout.AppScreenContainer
+import com.example.opsisfacerecognition.app.ui.layout.AppScreenContainer
+import com.example.opsisfacerecognition.app.ui.layout.AppTopBarContainer
 import com.example.opsisfacerecognition.navigation.Routes
 
 
@@ -44,32 +46,33 @@ fun HomeScreen(
     Scaffold(
         modifier = Modifier.fillMaxWidth(),
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Opsis Face Recognition",
-                        fontFamily = displayFontFamily,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                },
-                actions = {
-                    IconButton(
-                        onClick = { navController.navigate(Routes.SETTINGS) }
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.settings),
-                            contentDescription = "Settings",
-                            modifier = Modifier.size(32.dp),
-                            tint = MaterialTheme.colorScheme.onBackground
+            AppTopBarContainer {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "Opsis Face Recognition",
+                            fontFamily = displayFontFamily,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onBackground
                         )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                ),
-                modifier = Modifier.padding(horizontal = 10.dp)
-            )
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = { navController.navigate(Routes.SETTINGS) }
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.settings),
+                                contentDescription = "Settings",
+                                modifier = Modifier.size(32.dp),
+                                tint = MaterialTheme.colorScheme.onBackground
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
+                )
+            }
         }
     ) {
         innerPadding ->
@@ -95,7 +98,7 @@ fun HomeScreen(
                 contentDescription = "Opsis Face Recognition Logo",
                 modifier = Modifier
                     .fillMaxWidth(0.85f)
-                    .height(300.dp)
+                    .aspectRatio(1f)
                     .align(Alignment.CenterHorizontally),
                 contentScale = ContentScale.Fit
             )
