@@ -59,10 +59,6 @@ class MobileFaceNetLiteRT @Inject constructor(
         return FloatArray(vector.size) { i -> vector[i] / norm }
     }
 
-    override fun close() {
-        model.close()
-    }
-
     fun averageEmbeddings(list: List<FloatArray>): FloatArray {
         val size = list.first().size
         val avg = FloatArray(size)
@@ -86,5 +82,9 @@ class MobileFaceNetLiteRT @Inject constructor(
             dot += a[i] * b[i]
         }
         return dot
+    }
+
+    override fun close() {
+        model.close()
     }
 }

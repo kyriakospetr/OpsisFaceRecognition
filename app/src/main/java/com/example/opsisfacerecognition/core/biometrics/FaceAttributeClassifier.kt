@@ -2,6 +2,8 @@ package com.example.opsisfacerecognition.core.biometrics
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Rect
+import androidx.core.graphics.scale
 import com.google.ai.edge.litert.Accelerator
 import com.google.ai.edge.litert.CompiledModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -13,20 +15,18 @@ import org.tensorflow.lite.support.image.ops.ResizeOp
 import javax.inject.Inject
 import javax.inject.Singleton
 
-data class FaceAttributeResult(val hasGlasses: Boolean, val hasHat: Boolean)
-
 @Singleton
 class FaceAttributeClassifier @Inject constructor(
     @ApplicationContext context: Context
 ) : AutoCloseable {
 
     companion object {
-        //If the probability is higher than the threshold, we assume the person wears glasses or hat
-        private const val GLASSES_THRESHOLD = 0.20f
-        private const val HAT_THRESHOLD = 0.20f
+        private const val GLASSES_THRESHOLD = 0.50f
+        private const val HAT_THRESHOLD = 0.50f
         const val MODEL_INPUT_SIZE = 96 // MobileNetV2 Model is trained on 96x96
     }
 
+    // Use GPU fallback CPU
     private val model: CompiledModel = runCatching {
         CompiledModel.create(context.assets, "face_attributes.tflite", CompiledModel.Options(Accelerator.GPU))
     }.getOrElse {
@@ -72,7 +72,27 @@ class FaceAttributeClassifier @Inject constructor(
         )
     }
 
+    fun cropAndScale(upright: Bitmap, box: Rect): Bitmap? {
+        // Crops the face region from the upright bitmap using the ML Kit bounding box,
+        // then scales it to the required input size for the FaceAttributeClassifier (96x96).
+        // Bounds are clamped to avoid going outside the image dimensions.
+        val left = box.left.coerceAtLeast(0)
+        val top = box.top.coerceAtLeast(0)
+        val right = box.right.coerceAtMost(upright.width)
+        val bottom = box.bottom.coerceAtMost(upright.height)
+        val w = right - left
+        val h = bottom - top
+        if (w <= 0 || h <= 0) return null
+        val cropped = Bitmap.createBitmap(upright, left, top, w, h)
+        val inputSize = MODEL_INPUT_SIZE
+        val scaled = cropped.scale(inputSize, inputSize)
+        if (scaled !== cropped) cropped.recycle()
+        return scaled
+    }
+
     override fun close() {
         model.close()
     }
+
+    data class FaceAttributeResult(val hasGlasses: Boolean, val hasHat: Boolean)
 }

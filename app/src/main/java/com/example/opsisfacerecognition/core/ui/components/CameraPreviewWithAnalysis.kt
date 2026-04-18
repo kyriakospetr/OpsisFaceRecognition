@@ -21,98 +21,87 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.example.opsisfacerecognition.core.biometrics.FaceAnalyzer
+import kotlinx.coroutines.suspendCancellableCoroutine
+import java.util.concurrent.Executors
 import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
 @Composable
 fun CameraPreviewWithAnalysis(
     modifier: Modifier = Modifier,
-    analyzer: FaceAnalyzer
+    analyzer: ImageAnalysis.Analyzer?
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // We use different executor so we don't overload the main one
-    val cameraExecutor = remember { java.util.concurrent.Executors.newSingleThreadExecutor() }
+    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
 
-    // Create the PreviewView once and remember it.
-    // We do this outside AndroidView so we can reference it in the LaunchedEffect.
     val previewView = remember {
         PreviewView(context).apply {
             scaleType = PreviewView.ScaleType.FILL_CENTER
         }
     }
 
-    // We close the executor when we leave the screen in order to prevent memory leaks
-    DisposableEffect(Unit) {
-        onDispose {
-            cameraExecutor.shutdown()
-        }
-    }
-
-    // Close the analyzer (and its faceDetector) when the composable disposes or the analyzer instance changes
-    DisposableEffect(analyzer) {
-        onDispose {
-            analyzer.close()
-        }
-    }
-
-    // The LaunchedEffect block runs only when analyzer, lifecycleOwner change.
-    // This prevents the camera from re-binding unnecessary when other UI elements like text update.
-    LaunchedEffect(analyzer, lifecycleOwner) {
-        val cameraProvider = context.getCameraProvider()
-
-        // Configuration
-        val cameraSelector = CameraSelector.Builder()
-            .requireLensFacing(CameraSelector.LENS_FACING_FRONT)
-            .build()
-
+    // Held stable across recompositions so we can swap the analyzer without rebinding the camera.
+    val imageAnalysis = remember {
         val resolutionSelector = ResolutionSelector.Builder()
             .setAspectRatioStrategy(AspectRatioStrategy(AspectRatio.RATIO_4_3, AspectRatioStrategy.FALLBACK_RULE_AUTO))
             .setResolutionStrategy(ResolutionStrategy(Size(480, 360), ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER))
             .build()
 
-        // Use Cases
-        val preview = Preview.Builder()
+        ImageAnalysis.Builder()
             .setResolutionSelector(resolutionSelector)
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .build()
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { cameraExecutor.shutdown() }
+    }
+
+    LaunchedEffect(analyzer) {
+        if (analyzer != null) {
+            imageAnalysis.setAnalyzer(cameraExecutor, analyzer)
+        } else {
+            imageAnalysis.clearAnalyzer()
+        }
+    }
+
+    LaunchedEffect(lifecycleOwner) {
+        val cameraProvider = context.getCameraProvider()
+
+        val cameraSelector = CameraSelector.Builder()
+            .requireLensFacing(CameraSelector.LENS_FACING_FRONT)
+            .build()
+
+        val preview = Preview.Builder()
             .build().apply {
                 surfaceProvider = previewView.surfaceProvider
             }
 
-        val analysis = ImageAnalysis.Builder()
-            .setResolutionSelector(resolutionSelector)
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .build().apply {
-                setAnalyzer(cameraExecutor, analyzer)
-            }
-
         try {
-            // Unbind everything before binding new use cases.
             cameraProvider.unbindAll()
-
-            // The camera automatically stops when the app goes to background.
             cameraProvider.bindToLifecycle(
                 lifecycleOwner,
                 cameraSelector,
                 preview,
-                analysis
+                imageAnalysis
             )
         } catch (e: Exception) {
             Log.e("CameraPreview", "Binding failed", e)
         }
     }
 
-    // The UI Rendering displays the view we created
     AndroidView(
         modifier = modifier,
         factory = { previewView }
     )
 }
 
-private suspend fun Context.getCameraProvider(): ProcessCameraProvider = suspendCoroutine { continuation ->
-    val processCameraProvider = ProcessCameraProvider.getInstance(this)
-    processCameraProvider.addListener({
-        continuation.resume(processCameraProvider.get())
+private suspend fun Context.getCameraProvider(): ProcessCameraProvider = suspendCancellableCoroutine { continuation ->
+    val future = ProcessCameraProvider.getInstance(this)
+    future.addListener({
+        if (continuation.isActive) {
+            continuation.resume(future.get())
+        }
     }, ContextCompat.getMainExecutor(this))
 }

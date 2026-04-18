@@ -13,7 +13,6 @@ import javax.inject.Singleton
 import androidx.core.graphics.scale
 import kotlin.math.exp
 
-
 // Code converted from KeylessTech
 @Singleton
 class LivenessDetector @Inject constructor(
@@ -22,11 +21,9 @@ class LivenessDetector @Inject constructor(
     companion object {
         private const val MODEL_INPUT_SIZE = 80 // Silentface models expect 80x80 input
         private const val LIVENESS_THRESHOLD = 0.94f // Minimum score to consider a face as live
-        private val MODEL_FILES  = listOf("silentface40.onnx", "silentface27.onnx") // Two models operating at different scales for more robust detection
-        private val CROP_SCALES  = floatArrayOf(4.0f, 2.7f) // Each model sees the face at a different zoom level (wider vs tighter crop)
+        private val MODEL_FILES  = listOf("silentface40.onnx", "silentface27.onnx")
+        private val CROP_SCALES  = floatArrayOf(4.0f, 2.7f)
     }
-
-    data class LivenessResult(val isLive: Boolean, val score: Float)
 
     private val env: OrtEnvironment = OrtEnvironment.getEnvironment()
 
@@ -145,4 +142,6 @@ class LivenessDetector @Inject constructor(
     override fun close() {
         sessions.forEach { it.close() }
     }
+
+    data class LivenessResult(val isLive: Boolean, val score: Float)
 }

@@ -7,7 +7,6 @@ sealed interface FaceUiState {
         data object FaceDetected : Detection
         data object NoFace : Detection
         data object MultipleFaces : Detection
-        data object MoveCloser : Detection
         data object TooFar : Detection
         data object HoldStill : Detection
         data object LookStraight : Detection

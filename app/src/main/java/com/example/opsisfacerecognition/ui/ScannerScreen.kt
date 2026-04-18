@@ -2,10 +2,14 @@ package com.example.opsisfacerecognition.ui
 
 import android.graphics.Bitmap
 import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.activity.compose.BackHandler
+import androidx.annotation.RequiresApi
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -37,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,29 +62,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.opsisfacerecognition.app.ui.theme.bodyFontFamily
 import com.example.opsisfacerecognition.app.ui.theme.displayFontFamily
-import com.example.opsisfacerecognition.core.biometrics.FaceAnalyzer
-import com.example.opsisfacerecognition.core.biometrics.FaceAttributeClassifier
-import com.example.opsisfacerecognition.core.biometrics.LivenessDetector
-import com.example.opsisfacerecognition.core.ui.components.CameraPreviewOnly
-import com.example.opsisfacerecognition.core.ui.components.CameraPreviewWithAnalysis
-import com.example.opsisfacerecognition.core.ui.components.OvalOverlay
+import com.example.opsisfacerecognition.core.biometrics.FaceAnalyzerFactory
 import com.example.opsisfacerecognition.core.config.FaceScannerConfig
-import com.example.opsisfacerecognition.core.ui.layout.AppScreenContainer
 import com.example.opsisfacerecognition.core.states.FaceFlowMode
 import com.example.opsisfacerecognition.core.states.FaceUiState
+import com.example.opsisfacerecognition.core.states.FaceUiState.Detection
+import com.example.opsisfacerecognition.core.ui.components.CameraPreviewWithAnalysis
+import com.example.opsisfacerecognition.core.ui.components.OvalOverlay
+import com.example.opsisfacerecognition.core.ui.layout.AppScreenContainer
 import com.example.opsisfacerecognition.navigation.Routes
 import com.example.opsisfacerecognition.viewmodel.FaceRecognizerViewModel
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.foundation.isSystemInDarkTheme
-import com.example.opsisfacerecognition.app.ui.theme.attentionContainerDark
-import com.example.opsisfacerecognition.app.ui.theme.attentionContainerLight
-import com.example.opsisfacerecognition.app.ui.theme.onAttentionContainerDark
-import com.example.opsisfacerecognition.app.ui.theme.onAttentionContainerLight
-import com.example.opsisfacerecognition.core.states.FaceUiState.Detection
 
 private const val STATUS_ANIMATION_MS = 220
 
@@ -196,8 +188,7 @@ fun ScannerScreen(
                 uiState = uiState,
                 onDetectionFeedback = { feedback -> viewModel.onDetectionFeedback(feedback) },
                 onImagesCaptured = { bitmaps -> viewModel.onImagesCaptured(bitmaps, mode) },
-                faceAttributeClassifier = viewModel.faceAttributeClassifier,
-                livenessDetector = viewModel.livenessDetector,
+                faceAnalyzerFactory = viewModel.faceAnalyzerFactory,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -210,24 +201,22 @@ fun FaceScannerCameraZone(
     uiState: FaceUiState,
     onDetectionFeedback: (Detection) -> Unit,
     onImagesCaptured: (List<Bitmap>) -> Unit,
-    faceAttributeClassifier: FaceAttributeClassifier,
-    livenessDetector: LivenessDetector,
+    faceAnalyzerFactory: FaceAnalyzerFactory,
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
     var ovalCenter by remember { mutableStateOf<Offset?>(null) }
     var previewSize by remember { mutableStateOf(IntSize.Zero) }
 
-    // Get the status by our uiState
     val status = getScannerStatus(uiState)
 
-    // We use this variable to determine the border of our oval shape
     val isFaceDetected = uiState is Detection.FaceDetected || uiState is Detection.HoldStill
     val isProcessing =
         uiState is FaceUiState.Loading ||
-        uiState is FaceUiState.Enroll.CaptureProcessed ||
-        uiState is FaceUiState.Verify.Verified ||
-        uiState is FaceUiState.Verify.VerificationFailed
+                uiState is FaceUiState.Enroll.CaptureProcessed ||
+                uiState is FaceUiState.Verify.Verified ||
+                uiState is FaceUiState.Verify.VerificationFailed
+
     val fadeAlpha by animateFloatAsState(
         targetValue = if (isProcessing) 0.65f else 0f,
         animationSpec = tween(durationMillis = STATUS_ANIMATION_MS),
@@ -235,62 +224,48 @@ fun FaceScannerCameraZone(
     )
 
     Card(
-        modifier = modifier
-            .fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        // So we can get the screen's max width, height
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val screenWidthDp = maxWidth
             val screenHeightDp = maxHeight
 
-            // We make the shape of our oval based on our screen and a fixed variable
-            // How much % of the screen will the oval take and the margin from top
-            // So its responsive for all devices
             val ovalWidthDp = screenWidthDp * FaceScannerConfig.OVAL_WIDTH_PERCENT
             val ovalHeightDp = ovalWidthDp * FaceScannerConfig.OVAL_ASPECT_RATIO
             val topMarginDp = screenHeightDp * FaceScannerConfig.TOP_MARGIN_PERCENT
-
-            // We calculate the oval bottom so our status banner and progress bar can go below
             val ovalBottomDp = topMarginDp + ovalHeightDp
 
-            // We need to convert our dp to pixels for our analyzer
             val ovalWidthPx = with(density) { ovalWidthDp.toPx() }
             val ovalHeightPx = with(density) { ovalHeightDp.toPx() }
 
-            // Rendering
             Box(Modifier
                 .fillMaxSize()
                 .onSizeChanged { previewSize = it }
             ) {
-                // Analyzer
+
                 val faceAnalyzer = remember(ovalCenter, previewSize, ovalWidthPx, ovalHeightPx) {
                     val center = ovalCenter ?: return@remember null
                     if (previewSize.width == 0 || previewSize.height == 0) return@remember null
 
-                    FaceAnalyzer(
-                        ovalCenter = center,
+                    faceAnalyzerFactory.create(
+                        ovalCenterX = center.x,
+                        ovalCenterY = center.y,
                         ovalRadiusX = ovalWidthPx / 2f,
                         ovalRadiusY = ovalHeightPx / 2f,
                         screenWidth = previewSize.width.toFloat(),
                         screenHeight = previewSize.height.toFloat(),
                         onDetectionFeedback = onDetectionFeedback,
                         onImagesCaptured = onImagesCaptured,
-                        faceAttributeClassifier = faceAttributeClassifier,
-                        livenessDetector = livenessDetector
                     )
                 }
 
-                // If analyzer is initialized show the camera preview with the analyzer
-                // Else show the camera preview only until our analyzer is set up
-                if (faceAnalyzer != null) {
-                    CameraPreviewWithAnalysis(Modifier.fillMaxSize(), analyzer = faceAnalyzer)
-                } else {
-                    CameraPreviewOnly(Modifier.fillMaxSize())
-                }
+                CameraPreviewWithAnalysis(
+                    modifier = Modifier.fillMaxSize(),
+                    analyzer = faceAnalyzer
+                )
 
-                // Fade overlay during processing
                 if (fadeAlpha > 0f) {
                     Box(
                         modifier = Modifier
@@ -313,8 +288,7 @@ fun FaceScannerCameraZone(
                 Column(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .padding(top = ovalBottomDp)
-                        .padding(top = 32.dp)
+                        .padding(top = ovalBottomDp + 32.dp)
                         .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -356,18 +330,17 @@ fun StatusBanner(
     modifier: Modifier = Modifier
 ) {
     // We determine the background, content, icon based on MessageTone
-    val isDark = isSystemInDarkTheme()
     val targetBackgroundColor = when (tone) {
         MessageTone.Neutral -> MaterialTheme.colorScheme.surface
         MessageTone.Success -> MaterialTheme.colorScheme.primaryContainer
-        MessageTone.Attention -> if (isDark) attentionContainerDark else attentionContainerLight
+        MessageTone.Attention -> MaterialTheme.colorScheme.tertiaryFixed
         MessageTone.Error -> MaterialTheme.colorScheme.errorContainer
     }
 
     val targetContentColor = when (tone) {
         MessageTone.Neutral -> MaterialTheme.colorScheme.onSurface
         MessageTone.Success -> MaterialTheme.colorScheme.onPrimary
-        MessageTone.Attention -> if (isDark) onAttentionContainerDark else onAttentionContainerLight
+        MessageTone.Attention -> MaterialTheme.colorScheme.onTertiaryFixed
         MessageTone.Error -> MaterialTheme.colorScheme.onErrorContainer
     }
 
@@ -442,8 +415,7 @@ private fun getScannerStatus(uiState: FaceUiState): ScannerStatus =
 
         Detection.NoFace,
         Detection.CenterFace -> ScannerStatus("Center your face in the oval.", MessageTone.Neutral)
-        Detection.TooFar,
-        Detection.MoveCloser -> ScannerStatus("Move closer to the camera.", MessageTone.Neutral)
+        Detection.TooFar -> ScannerStatus("Move closer to the camera.", MessageTone.Neutral)
         Detection.LookStraight -> ScannerStatus("Don't look sideways.", MessageTone.Neutral)
         Detection.LookStraightAhead -> ScannerStatus("Look straight ahead.", MessageTone.Neutral)
         Detection.DontTiltHead -> ScannerStatus("Don't tilt your head.", MessageTone.Neutral)

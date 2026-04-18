@@ -71,8 +71,6 @@ val surfaceContainerLowDark = Color(0xFF161D1A)
 val surfaceContainerDark = Color(0xFF1A211E)
 val surfaceContainerHighDark = Color(0xFF242C28)
 val surfaceContainerHighestDark = Color(0xFF2F3632)
-
-// Attention / warning tone — amber/orange
 val attentionContainerLight = Color(0xFFFFEDD5)
 val onAttentionContainerLight = Color(0xFF7C2D12)
 val attentionContainerDark = Color(0xFF431407)

@@ -8,44 +8,42 @@ import android.graphics.PointF
 import androidx.core.graphics.createBitmap
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceLandmark
+import dagger.hilt.android.scopes.ViewModelScoped
+import javax.inject.Inject
 import kotlin.math.atan2
 import kotlin.math.sqrt
 
-class FaceSampleCollector(
-    private val sampleIntervalMs: Long,
-    private val blurVarianceThreshold: Double,
-    private val targetSamples: Int,
-    private val faceSize: Int,
-    private val minEyeDistanceForAlignment: Float,
-    private val targetLeftEyeX: Float,
-    private val targetLeftEyeY: Float,
-    private val targetRightEyeX: Float,
-    private val targetRightEyeY: Float
-) {
+@ViewModelScoped
+class FaceSampleCollector @Inject constructor() {
 
-    sealed interface CaptureResult {
-        data object Skipped : CaptureResult
-        data object Added : CaptureResult
-        data object Blurry : CaptureResult
-        data class Completed(val bitmaps: List<Bitmap>) : CaptureResult
+    companion object {
+        private const val TARGET_SAMPLES = 3
+        private const val SAMPLE_INTERVAL_MS = 350L
+        private const val BLUR_VARIANCE_THRESHOLD = 160.0
+        private const val MIN_EYE_DISTANCE_FOR_ALIGNMENT = 10f
+        private const val FACE_SIZE = 112
+        private const val TARGET_LEFT_EYE_X = 38f
+        private const val TARGET_LEFT_EYE_Y = 40f
+        private const val TARGET_RIGHT_EYE_X = 74f
+        private const val TARGET_RIGHT_EYE_Y = 40f
     }
-
-    private val facePixels = faceSize * faceSize
+    private val facePixels = FACE_SIZE * FACE_SIZE
 
     // We pause a bit after a successful capture.
     // We do not immediately start capturing all samples.
-    fun shouldCaptureSample(currentTime: Long, session: FaceCaptureSessionState): Boolean {
-        return currentTime - session.lastSampleTimeMs >= sampleIntervalMs
+    fun shouldCaptureSample(currentTime: Long, session: FaceCaptureSession): Boolean {
+        return currentTime - session.lastSampleTimeMs >= SAMPLE_INTERVAL_MS
     }
 
-    fun captureSample(uprightBitmap: Bitmap, face: Face, currentTime: Long, session: FaceCaptureSessionState): CaptureResult {
+    fun captureSample(uprightBitmap: Bitmap?, face: Face, currentTime: Long, session: FaceCaptureSession): CaptureResult {
         // Align the pre-decoded upright bitmap to produce the face crop
+        if(uprightBitmap == null) return CaptureResult.Skipped
         val alignedFaceBitmap = alignFaceByEyes(uprightBitmap, face) ?: return CaptureResult.Skipped
 
         // Check for blur
-        // We do not accept blurry images as our facenet model will extract unstable embeddings
+        // We do not accept blurry images because the facenet model will extract unstable embeddings
         val blurVariance = calculateBlurVariance(alignedFaceBitmap)
-        if (blurVariance < blurVarianceThreshold) {
+        if (blurVariance < BLUR_VARIANCE_THRESHOLD) {
             return CaptureResult.Blurry
         }
 
@@ -57,7 +55,7 @@ class FaceSampleCollector(
         session.lastSampleTimeMs = currentTime
 
         // If we reached the desired samples stop the process
-        if (session.capturedBitmaps.size >= targetSamples) {
+        if (session.capturedBitmaps.size >= TARGET_SAMPLES) {
             session.isCaptureComplete = true
             return CaptureResult.Completed(session.capturedBitmaps.toList())
         }
@@ -86,7 +84,7 @@ class FaceSampleCollector(
             orderedEyes.rightX,
             orderedEyes.rightY
         )
-        if (eyeDistance < minEyeDistanceForAlignment) {
+        if (eyeDistance < MIN_EYE_DISTANCE_FOR_ALIGNMENT) {
             return null
         }
 
@@ -113,8 +111,8 @@ class FaceSampleCollector(
 
         // It is useful because we will feed our facenet model with the same geometric faces
         // Each face will have its eyes at specific points
-        val targetLeftEye = PointF(targetLeftEyeX, targetLeftEyeY)
-        val targetRightEye = PointF(targetRightEyeX, targetRightEyeY)
+        val targetLeftEye = PointF(TARGET_LEFT_EYE_X, TARGET_LEFT_EYE_Y)
+        val targetRightEye = PointF(TARGET_RIGHT_EYE_X, TARGET_RIGHT_EYE_Y)
         val targetEyeDistance = targetRightEye.x - targetLeftEye.x
 
         val scaleFactor = targetEyeDistance / eyeDistance
@@ -137,7 +135,7 @@ class FaceSampleCollector(
             postTranslate(targetMidpointX, targetMidpointY)
         }
 
-        val alignedBitmap = createBitmap(faceSize, faceSize)
+        val alignedBitmap = createBitmap(FACE_SIZE, FACE_SIZE)
         val canvas = Canvas(alignedBitmap)
         canvas.drawBitmap(bitmap, transformationMatrix, Paint(Paint.FILTER_BITMAP_FLAG))
 
@@ -146,7 +144,7 @@ class FaceSampleCollector(
 
     private fun calculateBlurVariance(bitmap: Bitmap): Double {
         val pixels = IntArray(facePixels)
-        bitmap.getPixels(pixels, 0, faceSize, 0, 0, faceSize, faceSize)
+        bitmap.getPixels(pixels, 0, FACE_SIZE, 0, 0, FACE_SIZE, FACE_SIZE)
 
         // Convert to grayscale
         val gray = DoubleArray(facePixels) { i ->
@@ -160,12 +158,12 @@ class FaceSampleCollector(
         var sumSq = 0.0
         var count = 0
 
-        for (y in 1 until faceSize - 1) {
-            for (x in 1 until faceSize - 1) {
-                val c = y * faceSize + x
-                val lap = gray[(y - 1) * faceSize + x] + gray[y * faceSize + (x - 1)] -
+        for (y in 1 until FACE_SIZE - 1) {
+            for (x in 1 until FACE_SIZE - 1) {
+                val c = y * FACE_SIZE + x
+                val lap = gray[(y - 1) * FACE_SIZE + x] + gray[y * FACE_SIZE + (x - 1)] -
                         4.0 * gray[c] +
-                        gray[y * faceSize + (x + 1)] + gray[(y + 1) * faceSize + x]
+                        gray[y * FACE_SIZE + (x + 1)] + gray[(y + 1) * FACE_SIZE + x]
                 sum += lap
                 sumSq += lap * lap
                 count++
@@ -182,4 +180,11 @@ class FaceSampleCollector(
         val rightX: Float,
         val rightY: Float
     )
+
+    sealed interface CaptureResult {
+        data object Skipped : CaptureResult
+        data object Added : CaptureResult
+        data object Blurry : CaptureResult
+        data class Completed(val bitmaps: List<Bitmap>) : CaptureResult
+    }
 }
