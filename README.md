@@ -13,12 +13,9 @@
 
 A fully on-device face recognition app for Android. Enrollment and verification run entirely on the device with no network calls. Biometric templates never leave local storage.
 
-<p float="left">
-  <img src="docs/screenshots/home.png" width="200" alt="Home"/>
-  <img src="docs/screenshots/prep_enroll.png" width="200" alt="Enrollment prep"/>
-  <img src="docs/screenshots/prep_verify.png" width="200" alt="Verification prep"/>
-  <img src="docs/screenshots/settings.png" width="200" alt="Settings"/>
-</p>
+| Home | Enrollment prep | Scanner | Enroll dialog | Verify success | Settings |
+|------|-----------------|---------|---------------|----------------|----------|
+| <img src="docs/screenshots/home.png" width="130"/> | <img src="docs/screenshots/prep_enroll.png" width="130"/> | <img src="docs/screenshots/scanner.png" width="130"/> | <img src="docs/screenshots/enroll-dialog.png" width="130"/> | <img src="docs/screenshots/verify-success.png" width="130"/> | <img src="docs/screenshots/settings.png" width="130"/> |
 
 ## Highlights
 
@@ -34,7 +31,7 @@ A fully on-device face recognition app for Android. Enrollment and verification 
 |--------------|--------|
 | UI           | Jetpack Compose (Material 3), Navigation Compose, Material3 Window Size Class |
 | Camera       | CameraX (`core`, `camera2`, `lifecycle`, `view`) |
-| Detection    | Google ML Kit Face Detection (accurate mode, classification, landmarks, tracking) |
+| Detection    | Google ML Kit Face Detection (fast mode, classification, landmarks, tracking) |
 | Embedding    | MobileFaceNet via LiteRT + TensorFlow Lite Support |
 | Attributes   | Custom MobileNetV2 classifier (TFLite), GPU delegate with CPU fallback |
 | Liveness     | SilentFace dual-model ensemble (ONNX Runtime), NNAPI acceleration with CPU fallback |
