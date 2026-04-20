@@ -77,19 +77,19 @@ Each camera frame passes through `FaceAnalyzer`, which delegates to single-respo
 1. **Detection** – ML Kit returns faces with landmarks, head Euler angles, and a tracking ID.
 2. **Framing** – A single face must be centred inside the on-screen oval with `faceWidth` within `[0.45, 2.20] × ovalRadiusX`.
 3. **Pose** – Yaw/roll ≤ 15°, pitch ≤ 20° (pitch is more lenient because users look slightly down at their phone).
-4. **Identity continuity** – The ML Kit tracking ID must persist across frames; a change resets capture state to avoid mixing samples from two people.
+4. **Identity continuity** – The ML Kit tracking ID must persist across frames, a change resets capture state to avoid mixing samples from two people.
 5. **Eye openness** – Both eyes ≥ 0.40 probability.
 6. **Stability** – The face must hold a valid state for 600 ms before capture begins.
 7. **Attribute hygiene** – A MobileNetV2 head predicts `[glasses, hat]`. Two consecutive positive readings (sampled every 300 ms) block capture.
 8. **Passive liveness** – Two SilentFace models (80×80 CHW, scale 4.0× and 2.7×) score the frame in parallel, their live probabilities are averaged and thresholded at 0.97. Two consecutive failures block capture.
 9. **Alignment & blur** – The candidate frame is warped with a similarity transform so the eyes land on fixed coordinates in a 112×112 crop. A single-pass Laplacian variance (> 160) rejects motion blur.
 10. **Capture** – Three aligned crops are accumulated at 350 ms intervals.
-11. **Embedding** – Each crop is embedded with MobileFaceNet; vectors are L2-normalised, averaged, and re-normalised.
+11. **Embedding** – Each crop is embedded with MobileFaceNet, vectors are L2-normalised, averaged, and re-normalised.
 12. **Decision**
     - Enroll: store `{userId, fullName, embedding}`.
-    - Verify: cosine similarity against every stored template; accept if the best score ≥ `0.82`.
+    - Verify: cosine similarity against every stored template, accept if the best score ≥ `0.82`.
 
-All heavy work runs off the main thread; bitmaps are recycled in `finally` blocks to prevent leaks.
+All heavy work runs off the main thread, bitmaps are recycled in `finally` blocks to prevent leaks.
 
 ## Face Attribute Classifier
 
@@ -99,7 +99,7 @@ ML Kit does not expose glasses or hat detection, so a custom binary classifier w
 - **Attributes used:** `Eyeglasses`, `Wearing_Hat`.
 - **Architecture:** MobileNetV2 (ImageNet weights, frozen) → GlobalAveragePooling → Dense(128, ReLU) → Dropout(0.3) → Dense(2, Sigmoid).
 - **Input:** 96×96 RGB crop, normalised to `[0, 1]`.
-- **Output:** independent sigmoid probabilities; threshold 0.50 per attribute.
+- **Output:** independent sigmoid probabilities, threshold 0.50 per attribute.
 - **Export:** converted to `face_attributes.tflite` and bundled under `assets/`.
 - **Runtime:** LiteRT with GPU accelerator, graceful CPU fallback if the delegate fails to initialise.
 
@@ -109,13 +109,13 @@ Training notebook: `ml/train_face_attributes.ipynb` (Google Colab).
 
 - **Models:** `silentface40.onnx` (wider crop, scale 4.0×) and `silentface27.onnx` (tighter crop, scale 2.7×), run as an ensemble.
 - **Input:** 80×80 RGB, CHW layout, raw `[0, 255]` pixel values.
-- **Output:** softmax over `{spoof, live}`; live probabilities are averaged across both models.
+- **Output:** softmax over `{spoof, live}`, live probabilities are averaged across both models.
 - **Decision:** `average ≥ 0.97`. Both models must produce a valid crop — if either fails (e.g. the bounding box is too close to the frame edge), the check is rejected. The dual-scale ensemble is the whole point, so we don't silently fall back to a single model on a security check.
 - **Runtime:** ONNX Runtime for Android 1.24.2 with NNAPI execution provider, falling back to CPU silently.
 
 ## Security & Data
 
-- **Templates only:** raw images never leave the camera thread; only averaged, L2-normalised 128-d embeddings are persisted.
+- **Templates only:** raw images never leave the camera thread, only averaged, L2-normalised 128-d embeddings are persisted.
 - **Encrypted database:** Room over SQLCipher (`app.db`), schema: `users(localId, userId, fullName, embedding: ByteArray)`.
 - **Passphrase management:** a 32-byte passphrase is generated on first launch with `SecureRandom`, encrypted with an AES/GCM 256-bit key that lives in `AndroidKeyStore`, and stored as ciphertext + IV in private `SharedPreferences`. The raw key is never exportable.
 - **No backend:** everything is local, the app has no internet permission in its manifest beyond what CameraX and ML Kit require.
@@ -125,7 +125,7 @@ Training notebook: `ml/train_face_attributes.ipynb` (Google Colab).
 1. From Home, pick **Add your face** or **Verify identity**.
 2. Grant camera permission (rationale and settings fallbacks are handled declaratively).
 3. The scanner guides the user with granular feedback ("center your face", "don't tilt your head", "remove glasses", …) until a valid capture window is reached.
-4. On enroll, the user enters a full name; duplicates are rejected.
+4. On enroll, the user enters a full name, duplicates are rejected.
 5. On verify, the best-matching user is returned when the cosine similarity crosses the threshold.
 6. Settings allows single-user deletion or a full wipe.
 
