@@ -13,9 +13,14 @@
 
 A fully on-device face recognition app for Android. Enrollment and verification run entirely on the device with no network calls. Biometric templates never leave local storage.
 
-| Home | Enrollment prep | Scanner | Enroll dialog | Verify success | Settings |
-|------|-----------------|---------|---------------|----------------|----------|
-| <img src="docs/screenshots/home.png" width="130"/> | <img src="docs/screenshots/prep_enroll.png" width="130"/> | <img src="docs/screenshots/scanner.png" width="130"/> | <img src="docs/screenshots/enroll-dialog.png" width="130"/> | <img src="docs/screenshots/verify-success.png" width="130"/> | <img src="docs/screenshots/settings.png" width="130"/> |
+<div>
+  <img src="docs/screenshots/home.png" width="200" alt="Home"/>
+  <img src="docs/screenshots/prep_enroll.png" width="200" alt="Enrollment prep"/>
+  <img src="docs/screenshots/scanner.png" width="200" alt="Scanner"/>
+  <img src="docs/screenshots/enroll-dialog.png" width="200" alt="Enroll dialog"/>
+  <img src="docs/screenshots/verify-success.png" width="200" alt="Verify success"/>
+  <img src="docs/screenshots/settings.png" width="200" alt="Settings"/>
+</div>
 
 ## Highlights
 
