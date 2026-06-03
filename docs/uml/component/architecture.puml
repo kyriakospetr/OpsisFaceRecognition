@@ -1,0 +1,74 @@
+@startuml
+title Clean Architecture – Component Overview
+
+skinparam rectangle {
+  RoundCorner 10
+}
+skinparam component {
+  BackgroundColor<<presentation>> #AED6F1
+  BackgroundColor<<domain>>       #A9DFBF
+  BackgroundColor<<data>>         #FAD7A0
+  BackgroundColor<<core>>         #F1948A
+  FontSize 12
+}
+skinparam packageStyle rectangle
+
+' ─── Presentation Layer ───────────────────────────────────────────
+package "Presentation Layer" {
+  component "Screens (Compose UI)\nHome · Prep · Scanner · Enroll\nEnrollSuccess · VerifySuccess\nProcessFailed · Settings" as Screens <<presentation>>
+  component "FaceRecognizerViewModel\nSettingsViewModel" as VMs <<presentation>>
+  component "AppNavigation\n(Navigation Compose\n+ nested graphs)" as Nav <<presentation>>
+}
+
+' ─── Domain Layer ─────────────────────────────────────────────────
+package "Domain Layer" {
+  component "Use Cases\n ·ComputeEmbeddingUseCase\n · EnrollUserUseCase\n · VerifyUserUseCase\n · ListUsersUseCase\n · DeleteUserByLocalIdUseCase\n · DeleteAllUsersUseCase\n · FindUserByFullNameUseCase\n · FaceEmbeddingTemplateBuilder\n · FaceTemplateMatcher" as UseCases <<domain>>
+  component "UserRepository\n(interface)" as RepoInterface <<domain>>
+  component "User\n(domain model)" as DomainModel <<domain>>
+}
+
+' ─── Data Layer ───────────────────────────────────────────────────
+package "Data Layer" {
+  component "UserRepositoryImpl" as RepoImpl <<data>>
+  component "UserDao" as Dao <<data>>
+  component "AppDatabase\n(Room + SQLCipher)" as DB <<data>>
+  component "UserEntity\n+ EmbeddingConverters" as Entity <<data>>
+}
+
+' ─── Core / Biometrics ────────────────────────────────────────────
+package "Core / Biometrics" {
+  component "FaceAnalyzer\n(ML Kit, Camera X)" as Analyzer <<core>>
+  component "FaceValidation\n(Geometry checks)" as Validation <<core>>
+  component "FaceCaptureSession\n(Session State)" as CaptureSession <<core>>
+  component "FaceSampleCollector\n(Align by Eyes)" as SampleCollector <<core>>
+  component "LightingDetector\n(blur · alignment · buffering)" as LightingDetector <<core>>
+  component "LivenessDetector\n(SilentFace ONNX ×2)" as Liveness <<core>>
+  component "FaceAttributeClassifier\n(glasses · hat – TFLite)" as Attributes <<core>>
+  component "LiteRT\n(template embeddings – TFLite)" as LiteRT <<core>>
+}
+
+' ─── Presentation → Domain ────────────────────────────────────────
+Screens --> VMs
+Nav    --> Screens
+VMs    --> UseCases
+VMs    --> Analyzer
+VMs    --> FaceNet
+
+' ─── Domain → Data ────────────────────────────────────────────────
+UseCases      --> RepoInterface
+RepoInterface <|.. RepoImpl : implements
+
+' ─── Data internals ───────────────────────────────────────────────
+RepoImpl --> Dao
+Dao      --> DB
+DB       --> Entity
+
+' ─── Core internals ───────────────────────────────────────────────
+Analyzer --> Validation
+Analyzer --> CaptureSession
+Analyzer --> LightingDetector
+Analyzer --> Liveness
+Analyzer --> Attributes
+Analyzer --> SampleCollector
+
+@enduml

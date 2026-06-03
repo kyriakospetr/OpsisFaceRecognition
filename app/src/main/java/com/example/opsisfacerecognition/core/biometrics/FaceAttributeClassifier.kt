@@ -1,0 +1,127 @@
+package com.example.opsisfacerecognition.core.biometrics
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Rect
+import android.util.Log
+import androidx.core.graphics.scale
+import com.google.ai.edge.litert.Accelerator
+import com.google.ai.edge.litert.CompiledModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import org.tensorflow.lite.DataType
+import org.tensorflow.lite.support.common.ops.NormalizeOp
+import org.tensorflow.lite.support.image.ImageProcessor
+import org.tensorflow.lite.support.image.TensorImage
+import org.tensorflow.lite.support.image.ops.ResizeOp
+import java.util.Locale
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class FaceAttributeClassifier @Inject constructor(
+    @ApplicationContext private val context: Context
+) : AutoCloseable {
+
+    companion object {
+        private const val TAG = "FaceAttributes"
+        private const val GLASSES_THRESHOLD = 0.50f
+        private const val HAT_THRESHOLD = 0.50f
+        const val MODEL_INPUT_SIZE = 96 // MobileNetV2 Model is trained on 96x96
+    }
+
+    private val modelDelegate = lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        createModel()
+    }
+    private val model: CompiledModel by modelDelegate
+
+    // Use GPU fallback CPU, but only after the first attribute check starts.
+    private fun createModel(): CompiledModel = runCatching {
+        CompiledModel.create(context.assets, "face_attributes.tflite", CompiledModel.Options(Accelerator.GPU))
+    }.getOrElse {
+        CompiledModel.create(context.assets, "face_attributes.tflite", CompiledModel.Options(Accelerator.CPU))
+    }
+
+    // Buffers for model's input/output (performance)
+    private val inputBuffers by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { model.createInputBuffers() }
+    private val outputBuffers by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { model.createOutputBuffers() }
+
+    private val imageProcessor = ImageProcessor.Builder()
+        .add(ResizeOp(MODEL_INPUT_SIZE, MODEL_INPUT_SIZE, ResizeOp.ResizeMethod.BILINEAR))
+        .add(NormalizeOp(0f, 255f)) // Normalize pixels [0,255] -> [0,1]
+        .build()
+
+    @Synchronized
+    fun warmUp() {
+        model
+        inputBuffers
+        outputBuffers
+        Log.d(TAG, "Attribute model warm-up complete.")
+    }
+
+    @Synchronized
+    fun classify(faceBitmap: Bitmap): FaceAttributeResult {
+        val m = model
+        val ib = inputBuffers
+        val ob = outputBuffers
+
+        // Verify bitmap is ARGB_8888 format
+        val bmp = if (faceBitmap.config == Bitmap.Config.ARGB_8888) faceBitmap
+                  else faceBitmap.copy(Bitmap.Config.ARGB_8888, false)
+
+        // Load bitmap to Tensor Image, resize + normalize
+        var tensorImage = TensorImage(DataType.FLOAT32)
+        tensorImage.load(bmp)
+        tensorImage = imageProcessor.process(tensorImage)
+
+        // Run the model
+        ib[0].writeFloat(tensorImage.tensorBuffer.floatArray)
+        m.run(ib, ob)
+
+        // Model trained with sigmoid activation so the values are at [0,1]
+        val output = ob[0].readFloat()
+
+        // index 0 = glasses probability, index 1 = hat probability
+        val glassesProb = if (output.isNotEmpty()) output[0] else 0f
+        val hatProb = if (output.size > 1) output[1] else 0f
+        val hasGlasses = glassesProb >= GLASSES_THRESHOLD
+        val hasHat = hatProb >= HAT_THRESHOLD
+        Log.d(
+            TAG,
+            "Attributes glasses=${glassesProb.formatScore()}, glassesThreshold=${GLASSES_THRESHOLD.formatScore()}, " +
+                "hasGlasses=$hasGlasses, hat=${hatProb.formatScore()}, hatThreshold=${HAT_THRESHOLD.formatScore()}, hasHat=$hasHat"
+        )
+        return FaceAttributeResult(
+            hasGlasses = hasGlasses,
+            hasHat = hasHat
+        )
+    }
+
+    fun cropAndScale(upright: Bitmap, box: Rect): Bitmap? {
+        // Crops the face region from the upright bitmap using the ML Kit bounding box,
+        // then scales it to the required input size for the FaceAttributeClassifier (96x96).
+        // Bounds are clamped to avoid going outside the image dimensions.
+        val left = box.left.coerceAtLeast(0)
+        val top = box.top.coerceAtLeast(0)
+        val right = box.right.coerceAtMost(upright.width)
+        val bottom = box.bottom.coerceAtMost(upright.height)
+        val w = right - left
+        val h = bottom - top
+        if (w <= 0 || h <= 0) return null
+        val cropped = Bitmap.createBitmap(upright, left, top, w, h)
+        val inputSize = MODEL_INPUT_SIZE
+        val scaled = cropped.scale(inputSize, inputSize)
+        if (scaled !== cropped) cropped.recycle()
+        return scaled
+    }
+
+    @Synchronized
+    override fun close() {
+        if (modelDelegate.isInitialized()) {
+            model.close()
+        }
+    }
+
+    data class FaceAttributeResult(val hasGlasses: Boolean, val hasHat: Boolean)
+
+    private fun Float.formatScore(): String = String.format(Locale.US, "%.4f", this)
+}

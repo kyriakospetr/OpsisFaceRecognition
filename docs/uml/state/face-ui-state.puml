@@ -1,0 +1,54 @@
+@startuml
+title FaceUiState – State Machine
+
+skinparam state {
+  BackgroundColor #FDFEFE
+  BorderColor #2C3E50
+  ArrowColor #2C3E50
+}
+
+[*] --> Idle
+
+Idle    --> Loading    : scanner opened
+
+state "Detection" as Detection {
+  [*]          --> NoFace
+  NoFace       --> FaceDetected   : face appears
+
+  FaceDetected --> MultipleFaces  : >1 face
+  FaceDetected --> TooFar         : face small
+  FaceDetected --> TooClose       : face large
+  FaceDetected --> CenterFace     : off-center
+  FaceDetected --> LookStraight   : yaw > 15°
+  FaceDetected --> LookStraightAhead : pitch > 20°
+  FaceDetected --> DontTiltHead   : roll > 15°
+  FaceDetected --> ImproveFocus   : blurry
+  FaceDetected --> ImproveLighting : low light
+  FaceDetected --> ReduceLighting  : high light
+  FaceDetected --> WearingGlasses : glasses
+  FaceDetected --> WearingHat     : hat
+  FaceDetected --> SpoofDetected  : liveness failed
+  FaceDetected --> HoldStill      : stability check
+}
+
+Loading --> Detection  : camera ready
+Detection --> Loading : capture success
+
+state "Enroll Flow" as Enroll {
+  [*]              --> CaptureProcessed
+  CaptureProcessed --> FullNameConflict  : validation error
+  CaptureProcessed --> Completed         : success
+}
+
+state "Verify Flow" as Verify {
+  [*]     --> Matching
+  Matching --> Verified           : score >= 0.74
+  Matching --> VerificationFailed : score < 0.74
+}
+
+Loading --> Enroll  : ENROLL mode
+Loading --> Verify  : VERIFY mode
+
+Loading   --> Error : exception
+Error     --> [*]
+@enduml

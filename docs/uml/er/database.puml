@@ -1,0 +1,28 @@
+@startuml
+title Data Layer: User Entity & Persistence
+
+skinparam linetype ortho
+skinparam backgroundColor #FFFFFF
+
+entity "UserEntity" as UserEntity {
+  * **localId** : LONG <<PK>>
+  --
+  * userId    : TEXT
+  * fullName  : TEXT
+  * embeddingTemplates : BLOB
+}
+
+class EmbeddingConverters {
+  + embeddingTemplatesToByteArray(value: FaceEmbeddingTemplates?): ByteArray?
+  + byteArrayToEmbeddingTemplates(value: ByteArray?): FaceEmbeddingTemplates?
+}
+
+UserEntity ..> EmbeddingConverters : <<uses>>
+
+note right of EmbeddingConverters
+  Uses ByteBuffer (Little-Endian)
+  to serialize FaceEmbeddingTemplates
+  into a single BLOB for SQLCipher.
+end note
+
+@enduml

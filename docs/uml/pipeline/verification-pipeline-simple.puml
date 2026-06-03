@@ -1,0 +1,73 @@
+@startuml
+title Identity Verification Process
+
+skinparam activity {
+  BackgroundColor #EAFAF1
+  BorderColor     #1D6A39
+  FontSize        13
+  FontName        Arial
+}
+skinparam activityDiamond {
+  BackgroundColor #D5F5E3
+  BorderColor     #1D6A39
+}
+skinparam arrow {
+  Color #1D6A39
+}
+skinparam note {
+  BackgroundColor #FEF9E7
+  BorderColor     #F0B27A
+}
+skinparam backgroundColor #FFFFFF
+
+start
+
+:Camera Frame Input;
+
+:Face Detection (ML Kit);
+
+if (Face detected?) then (No)
+  :Provide User Feedback;
+  stop
+endif
+
+:Quality Checks
+──────────────────
+• Framing & Size
+• Head Pose
+• Eyewear/Hat Detection
+• Liveness (SilentFace)
+• Lighting Quality
+• Blur Rejection;
+
+if (All checks passed?) then (No)
+  :Provide User Feedback;
+  stop
+endif
+
+:Collect 3 aligned face samples (112×112);
+
+note right
+  One sample every 350 ms
+  Total: 3 samples
+end note
+
+:Extract Embeddings (MobileFaceNet) and generate lighting templates;
+
+:4 templates(original · exposure norm · gamma dark · luma equalized) → L2 Normalization;
+
+:Compare with Stored Templates (best cosine similarity);
+
+note right
+  Acceptance threshold: 0.74
+end note
+
+if (Best similarity >= 0.74?) then (Yes)
+  :Verification Success\n✓ Identity Confirmed;
+else (No)
+  :Verification Failed\n✗ Unknown Person;
+endif
+
+stop
+
+@enduml

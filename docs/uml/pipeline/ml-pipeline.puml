@@ -1,0 +1,97 @@
+@startuml
+title ML / Biometric Processing Pipeline
+
+skinparam activity {
+  BackgroundColor #FDFEFE
+  BorderColor     #2C3E50
+  FontSize 12
+}
+skinparam note {
+  BackgroundColor #FEF9E7
+  BorderColor     #F0B27A
+}
+
+|Camera (CameraX)|
+start
+:Capture ImageProxy frame;
+
+|FaceAnalyzer|
+:Convert ImageProxy to Bitmap;
+:ML Kit Face Detection\n(landmarks · classifications · tracking);
+
+if (Face detected?) then (no face\nor multiple)
+  :Emit feedback state\n(NoFace / MultipleFaces);
+  stop
+endif
+
+:FaceValidation\n──────────────\n• Face centered in oval\n• Face width in range\n• Yaw/roll/pitch limits\n• Eye landmarks available;
+
+if (Geometry valid?) then (no)
+  :Emit feedback state\n(CenterFace / TooFar / TooClose /\nLookStraight );
+  stop
+endif
+
+|FaceSampleCollector|
+:Lighting & Blur Check\n(Luminance range · Laplacian variance);
+
+if (Quality valid?) then (no)
+  :Emit feedback state\n(TooDark / TooBright / ImproveFocus);
+  stop
+endif
+
+|FaceAttributeClassifier (TFLite)|
+:Classify face attributes;
+note right
+  Runs every 500 ms
+  MobileNetV2 · glasses/hat checks
+end note
+
+if (Attributes OK?) then (no)
+  :Emit feedback state\n(WearingGlasses / WearingHat);
+  stop
+endif
+
+|LivenessDetector (ONNX Runtime)|
+:Passive liveness check;
+note right
+  Runs every 300 ms
+  SilentFace dual-scale check
+end note
+if (Live face?) then (no)
+  :Emit feedback state\n(SpoofDetected);
+  stop
+endif
+
+|FaceSampleCollector|
+:Align face crop (112×112 px);
+:Buffer aligned sample\n(350 ms between samples);
+
+if (3 samples collected?) then (no)
+  :Emit FaceDetected\n(continue loop);
+  stop
+endif
+
+:Return 3 aligned bitmaps;
+
+|MobileFaceNetLiteRT (TFLite)|
+note right
+  Embed embeddings (x4 templates)
+  L2 normalisation
+end note
+:Generate final template set;
+
+|FaceRecognizerViewModel|
+if (Flow mode?) then (ENROLL)
+  :Store pending embedding\n→ navigate to name entry;
+else (VERIFY)
+  :Compare via Best Cosine Similarity;
+  if (Best score >= 0.74?) then (yes)
+    :Navigate → Verify Success;
+  else (no)
+    :Navigate → Verify Failed;
+  endif
+endif
+
+stop
+
+@enduml

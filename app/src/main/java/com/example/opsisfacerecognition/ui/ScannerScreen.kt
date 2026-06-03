@@ -1,0 +1,430 @@
+package com.example.opsisfacerecognition.ui
+
+import android.graphics.Bitmap
+import android.os.Build
+import androidx.activity.compose.BackHandler
+import androidx.annotation.RequiresApi
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
+import com.example.opsisfacerecognition.app.ui.theme.bodyFontFamily
+import com.example.opsisfacerecognition.app.ui.theme.displayFontFamily
+import com.example.opsisfacerecognition.core.biometrics.FaceAnalyzerFactory
+import com.example.opsisfacerecognition.core.config.FaceScannerConfig
+import com.example.opsisfacerecognition.core.states.FaceFlowMode
+import com.example.opsisfacerecognition.core.states.FaceUiState
+import com.example.opsisfacerecognition.core.states.FaceUiState.Detection
+import com.example.opsisfacerecognition.app.ui.components.CameraPreviewWithAnalysis
+import com.example.opsisfacerecognition.app.ui.components.OvalOverlay
+import com.example.opsisfacerecognition.app.ui.layout.AppScreenContainer
+import com.example.opsisfacerecognition.navigation.Routes
+import com.example.opsisfacerecognition.viewmodel.FaceRecognizerViewModel
+
+private const val STATUS_ANIMATION_MS = 220
+
+@RequiresApi(Build.VERSION_CODES.O)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ScannerScreen(
+    navController: NavController,
+    title: String,
+    subTitle: String,
+    popUpToRoute: String,
+    backRoute: String,
+    mode: FaceFlowMode,
+    viewModel: FaceRecognizerViewModel = hiltViewModel()
+) {
+
+    // Ui state from our view model
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val handleBack = {
+        val popped = navController.popBackStack(backRoute, false)
+        if (!popped) {
+            navController.navigate(backRoute) {
+                launchSingleTop = true
+            }
+        }
+    }
+
+    // Based on the mode, we navigate by FaceUiState
+    LaunchedEffect(uiState) {
+        when (mode) {
+            FaceFlowMode.ENROLL -> {
+                if (uiState is FaceUiState.Enroll.CaptureProcessed) {
+                    navController.navigate(Routes.ENROLL_PROCESSED) {
+                        popUpTo(popUpToRoute)
+                        launchSingleTop = true
+                    }
+                } else if (uiState is FaceUiState.Error) {
+                    navController.navigate(Routes.ENROLL_FAILED) {
+                        popUpTo(popUpToRoute)
+                        launchSingleTop = true
+                    }
+                }
+            }
+            FaceFlowMode.VERIFY -> {
+                when (uiState) {
+                    is FaceUiState.Verify.Verified -> {
+                        navController.navigate(Routes.VERIFY_SUCCESS) {
+                            popUpTo(popUpToRoute)
+                            launchSingleTop = true
+                        }
+                    }
+
+                    is FaceUiState.Verify.VerificationFailed -> {
+                        navController.navigate(Routes.VERIFY_FAILED) {
+                            popUpTo(popUpToRoute)
+                            launchSingleTop = true
+                        }
+                    }
+
+                    is FaceUiState.Error -> {
+                        navController.navigate(Routes.VERIFY_FAILED) {
+                            popUpTo(popUpToRoute)
+                            launchSingleTop = true
+                        }
+                    }
+
+                    else -> {}
+                }
+            }
+        }
+    }
+    BackHandler(onBack = handleBack)
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { },
+                navigationIcon = {
+                    IconButton(onClick = handleBack) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+            )
+        }
+    ) { innerPadding ->
+        AppScreenContainer(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            // Header Section
+            Column {
+                Text(
+                    text = title,
+                    fontFamily = displayFontFamily,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = subTitle,
+                    fontFamily = bodyFontFamily,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.alpha(0.7f)
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Camera Section
+            FaceScannerCameraZone(
+                uiState = uiState,
+                onDetectionFeedback = { feedback -> viewModel.onDetectionFeedback(feedback) },
+                onImagesCaptured = { bitmaps -> viewModel.onImagesCaptured(bitmaps, mode) },
+                faceAnalyzerFactory = viewModel.faceAnalyzerFactory,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun FaceScannerCameraZone(
+    uiState: FaceUiState,
+    onDetectionFeedback: (Detection) -> Unit,
+    onImagesCaptured: (List<Bitmap>) -> Unit,
+    faceAnalyzerFactory: FaceAnalyzerFactory,
+    modifier: Modifier = Modifier
+) {
+    val density = LocalDensity.current
+    var ovalCenter by remember { mutableStateOf<Offset?>(null) }
+    var previewSize by remember { mutableStateOf(IntSize.Zero) }
+
+    val status = getScannerStatus(uiState)
+
+    val isFaceDetected = uiState is Detection.FaceDetected || uiState is Detection.HoldStill
+    val isProcessing =
+        uiState is FaceUiState.Loading ||
+                uiState is FaceUiState.Enroll.CaptureProcessed ||
+                uiState is FaceUiState.Verify.Verified ||
+                uiState is FaceUiState.Verify.VerificationFailed
+
+    val fadeAlpha by animateFloatAsState(
+        targetValue = if (isProcessing) 0.65f else 0f,
+        animationSpec = tween(durationMillis = STATUS_ANIMATION_MS),
+        label = "cameraFade"
+    )
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val screenWidthDp = maxWidth
+            val screenHeightDp = maxHeight
+
+            val ovalWidthDp = screenWidthDp * FaceScannerConfig.OVAL_WIDTH_PERCENT
+            val ovalHeightDp = ovalWidthDp * FaceScannerConfig.OVAL_ASPECT_RATIO
+            val topMarginDp = screenHeightDp * FaceScannerConfig.TOP_MARGIN_PERCENT
+            val ovalBottomDp = topMarginDp + ovalHeightDp
+
+            val ovalWidthPx = with(density) { ovalWidthDp.toPx() }
+            val ovalHeightPx = with(density) { ovalHeightDp.toPx() }
+
+            Box(Modifier
+                .fillMaxSize()
+                .onSizeChanged { previewSize = it }
+            ) {
+
+                val faceAnalyzer = remember(ovalCenter, previewSize, ovalWidthPx, ovalHeightPx) {
+                    val center = ovalCenter ?: return@remember null
+                    if (previewSize.width == 0 || previewSize.height == 0) return@remember null
+
+                    faceAnalyzerFactory.create(
+                        ovalCenterX = center.x,
+                        ovalCenterY = center.y,
+                        ovalRadiusX = ovalWidthPx / 2f,
+                        ovalRadiusY = ovalHeightPx / 2f,
+                        screenWidth = previewSize.width.toFloat(),
+                        screenHeight = previewSize.height.toFloat(),
+                        onDetectionFeedback = onDetectionFeedback,
+                        onImagesCaptured = onImagesCaptured,
+                    )
+                }
+
+                CameraPreviewWithAnalysis(
+                    modifier = Modifier.fillMaxSize(),
+                    analyzer = faceAnalyzer
+                )
+
+                if (fadeAlpha > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = fadeAlpha))
+                    )
+                }
+
+                // Our oval
+                OvalOverlay(
+                    modifier = Modifier.fillMaxSize(),
+                    isFaceDetected = isFaceDetected,
+                    ovalWidth = ovalWidthDp,
+                    ovalHeight = ovalHeightDp,
+                    topMargin = topMarginDp,
+                    onCenterCalculated = { ovalCenter = it }
+                )
+
+                // Our Status Banner and the ScanningProgressBar
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = ovalBottomDp + 32.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+
+                    StatusBanner(
+                        text = status.message,
+                        tone = status.tone
+                    )
+
+                    AnimatedVisibility(
+                        visible = isFaceDetected
+                    ) {
+                        ScanningProgressBar()
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ScanningProgressBar(modifier: Modifier = Modifier) {
+    LinearProgressIndicator(
+        modifier = modifier
+            .padding(16.dp)
+            .fillMaxWidth(0.7f)
+            .height(6.dp)
+            .clip(RoundedCornerShape(999.dp)),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)
+    )
+}
+
+@Composable
+fun StatusBanner(
+    text: String,
+    tone: MessageTone,
+    modifier: Modifier = Modifier
+) {
+    // We determine the background, content, icon based on MessageTone
+    val targetBackgroundColor = when (tone) {
+        MessageTone.Neutral -> MaterialTheme.colorScheme.surface
+        MessageTone.Success -> MaterialTheme.colorScheme.primaryContainer
+        MessageTone.Attention -> MaterialTheme.colorScheme.tertiaryFixed
+        MessageTone.Error -> MaterialTheme.colorScheme.errorContainer
+    }
+
+    val targetContentColor = when (tone) {
+        MessageTone.Neutral -> MaterialTheme.colorScheme.onSurface
+        MessageTone.Success -> MaterialTheme.colorScheme.onPrimary
+        MessageTone.Attention -> MaterialTheme.colorScheme.onTertiaryFixed
+        MessageTone.Error -> MaterialTheme.colorScheme.onErrorContainer
+    }
+
+    val backgroundColor by animateColorAsState(
+        targetValue = targetBackgroundColor,
+        animationSpec = tween(durationMillis = STATUS_ANIMATION_MS),
+        label = "bgColor"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = targetContentColor,
+        animationSpec = tween(durationMillis = STATUS_ANIMATION_MS),
+        label = "txtColor"
+    )
+
+    val icon = when (tone) {
+        MessageTone.Neutral -> Icons.Outlined.Info
+        MessageTone.Success -> Icons.Outlined.CheckCircle
+        MessageTone.Attention -> Icons.Outlined.Warning
+        MessageTone.Error -> Icons.Outlined.Warning
+    }
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = backgroundColor,
+        shadowElevation = 4.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .animateContentSize(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(20.dp)
+            )
+
+            Spacer(Modifier.width(10.dp))
+
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge,
+                color = contentColor,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+// UI Helpers
+data class ScannerStatus(val message: String, val tone: MessageTone)
+enum class MessageTone {
+    Neutral, Success, Attention, Error
+}
+private fun getScannerStatus(uiState: FaceUiState): ScannerStatus =
+    when (uiState) {
+        FaceUiState.Idle -> ScannerStatus("Starting camera...", MessageTone.Neutral)
+        FaceUiState.Loading -> ScannerStatus("Processing...", MessageTone.Neutral)
+
+        Detection.FaceDetected,
+        Detection.HoldStill -> ScannerStatus("Hold still...", MessageTone.Success)
+        Detection.WearingGlasses -> ScannerStatus("Please remove glasses to continue.", MessageTone.Attention)
+        Detection.WearingHat -> ScannerStatus("Please remove hat to continue.", MessageTone.Attention)
+        Detection.TooClose -> ScannerStatus("Too close. Move further away.", MessageTone.Attention)
+        Detection.ImproveLighting -> ScannerStatus("Improve lighting and keep your face visible.", MessageTone.Attention)
+        Detection.ReduceLighting -> ScannerStatus("Reduce bright light on your face.", MessageTone.Attention)
+        Detection.SpoofDetected -> ScannerStatus("We could not confirm liveness. Try again in better light.", MessageTone.Attention)
+
+        Detection.NoFace,
+        Detection.CenterFace -> ScannerStatus("Center your face in the oval.", MessageTone.Neutral)
+        Detection.TooFar -> ScannerStatus("Move closer to the camera.", MessageTone.Neutral)
+        Detection.LookStraight -> ScannerStatus("Look toward the camera.", MessageTone.Neutral)
+        Detection.LookStraightAhead -> ScannerStatus("Look straight ahead.", MessageTone.Neutral)
+        Detection.DontTiltHead -> ScannerStatus("Keep your head straight.", MessageTone.Neutral)
+
+        Detection.MultipleFaces -> ScannerStatus("Only one face in frame.", MessageTone.Error)
+        Detection.ImproveFocus -> ScannerStatus("Hold still for a clearer scan.", MessageTone.Error)
+
+        FaceUiState.Enroll.FullNameConflict -> ScannerStatus("Name already exists.", MessageTone.Error)
+        is FaceUiState.Error -> ScannerStatus("Something went wrong. Try again.", MessageTone.Error)
+        else -> ScannerStatus("Processing...", MessageTone.Neutral)
+    }

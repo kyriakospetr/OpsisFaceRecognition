@@ -1,0 +1,68 @@
+@startuml
+title Standard Face Enrollment
+
+actor User
+participant "Home\nScreen" as Home
+participant "Preparation\nScreen" as Prep
+participant "Scanner\nScreen" as Scan
+participant "Enroll\nScreen" as Enroll
+participant "Success\nScreen" as Success
+participant "Failed\nScreen" as Failed
+participant "Camera" as Camera
+participant "Face\nAnalyzer" as Analyzer
+participant "MobileFaceNet\n(TFLite)" as FaceNet
+participant "Room\nDB" as DB
+
+User -> Home : Open application
+Home -> Prep : Add your face
+
+note right of Prep
+  Guidelines:
+  - Uncovered face
+  - Good lighting
+end note
+
+Prep -> Scan : Begin scan
+Scan -> Camera : Start capture
+
+loop Until 3 quality frames captured
+  Camera --> Scan : Frame
+  Scan -> Analyzer : Detect + validate
+  note right of Analyzer
+    Checks: face centered, size,
+    head rotation, eye landmarks,
+    no glasses / no hat,
+    passive liveness (SilentFace),
+    blur,lighting quality, movement stability
+  end note
+  Analyzer --> Scan : Feedback state
+end
+
+Scan -> Camera : Stop capture
+Scan -> FaceNet : Build 4 exposure-aware templates
+FaceNet --> Scan : Template set → pending embeddingTemplates
+
+alt Embedding computed successfully
+  Scan -> Enroll : Navigate with pending embedding
+
+  loop Until valid name entered
+    User -> Enroll : Enter full name + Continue
+    Enroll -> DB : Check full name availability
+    DB --> Enroll : Conflict or name too short
+    Enroll --> User : Show error (name taken / too short)
+  end
+
+  DB --> Enroll : Available
+  Enroll -> DB : Save user (fullName, embeddingTemplates)
+  DB --> Enroll : Saved
+  Enroll -> Success : Navigate
+  Success --> User : "You are all set, {fullName}"
+  User -> Success : Tap Continue
+  Success -> Home : Return to home
+
+else Embedding computation failed
+  Scan -> Failed : Navigate
+  Failed --> User : Show error + retry option
+end
+
+@enduml
